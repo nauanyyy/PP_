@@ -1,0 +1,772 @@
+{% extends "base.html" %}
+
+{% block title %}Visão Geral{% endblock %}
+
+{% block content %}
+
+<section class="user-dashboard">
+
+<header class="navbar">
+    <div class="logo">
+        <img src="{{ url_for('static', filename='ECONIZZE.png') }}" class="logo-img" alt="Logomarca">
+    </div>
+    <nav class="nav-links">
+        <a href="{{ url_for('usuario') }}" class="dashboard-btn">Visão Geral</a>
+        <a href="{{ url_for('historico') }}" class="dashboard-btn active">Histórico</a>
+        <a href="{{ url_for('relatorios') }}" class="dashboard-btn">Relatórios</a>
+        <a href="{{ url_for('metas') }}" class="dashboard-btn">Metas</a>
+    </nav>
+    <div class="user-actions" style="margin-right: 20px;">
+        <button class="btn-imagem" onclick="toggleNotificationBar()">
+            <img src="{{ url_for('static', filename='sininho.png') }}" alt="Notificações" style="width: 25px; height: 25px;">
+        </button>
+        <span style="margin: 0 15px;"></span>
+        <button class="btn-imagem" onclick="toggleConfiguracoes()">
+            <img src="{{ url_for('static', filename='home.png') }}" alt="Configurações" style="width: 25px; height: 25px;">
+        </button>
+    </div>
+</header>
+
+<div id="notification-bar" class="notification-bar" style="display: none;">
+    <h4 style="display: flex; justify-content: space-between; align-items: center;">
+        Alertas
+        <span onclick="toggleNotificationBar()" style="cursor: pointer; font-size: 18px; color: #d80048;">
+            &times;
+        </span>
+    </h4>
+    <ul id="notification-list"></ul>
+    <button onclick="clearNotifications()" style="margin-top: 5px; background-color: #d80048; color: white; border: none; border-radius: 5px; padding: 5px 10px;">
+        Limpar Notificações
+    </button>
+</div>
+
+<div id="flash-messages" style="text-align: center; position: fixed; width: 100%; display: none; top: 90px; left: 0; z-index: 1000; margin: 0 auto; padding: 10px; max-width: 400px; border: 1px solid #ff80ab; background-color: #ffc1e3; color: #d81b60; border-radius: 20px; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); margin-left: 35%;">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div>
+                    <p>{{ message }}</p>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+</div>
+
+<div class="dashboard-content">
+    <div class="saldo-card small-card">
+        <strong style="color: #e91e63; padding-top: 20px; padding-bottom: 20px;">Saldo Total:</strong>
+        <div class="saldo-container" style="display: flex; align-items: center; justify-content: center; padding-top: 20px;">
+            <span id="saldo" style="font-weight: bold; margin-right: 5px;">R$ ----</span>
+            <button class="btn-imagem" onclick="toggleSaldo()">
+                <img src="{{ url_for('static', filename='visualizar.png') }}" id="toggle-saldo" alt="Olho" class="icone-saldo" style="width: 30px; height: 15px; padding-left: 10px;">
+            </button>
+        </div>
+    </div>
+    
+    <div class="actions small-card" style="display: flex; flex-direction: column; align-items: center; padding: 30px; border-radius: 15px; background-color: #fff; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);">
+        <strong style="color: #e91e63; padding-bottom: 20px;">Adicionar:</strong>
+        <div style="display: flex; justify-content: center; align-items: center;">
+            <div style="text-align: center; margin-right: 20px;">
+                <button class="btn-imagem-ADD" title="Adicionar Receita" onclick="showReceitaForm()" style="background: none; border: none; display: flex; align-items: center; justify-content: center; padding-bottom: 10px;">
+                    <img src="{{ url_for('static', filename='receitas.png') }}" alt="Adicionar Receita" style="width: 55px; height: 50px;">
+                </button>
+                <span style="font-size: 13px; color: #e91e63; font-weight: bold;">Receita</span>
+            </div>
+            <div style="text-align: center;">
+                <button class="btn-imagem-ADD" title="Adicionar Despesa" onclick="showDespesaForm()" style="background: none; border: none; display: flex; align-items: center; justify-content: center; padding-bottom: 10px;">
+                    <img src="{{ url_for('static', filename='despesas.png') }}" alt="Adicionar Despesa" style="width: 46px; height: 49px;">
+                </button>
+                <span style="font-size: 13px; color: #e91e63; font-weight: bold;">Despesa</span>
+            </div>
+        </div>
+    </div>
+    
+    <div class="limite-card large-card" style="grid-column: span 2; height: 200px;">
+        <h3 style="color: #e91e63; padding-top: 10px; padding-bottom: 30px;">Limite disponível</h3>
+        <div class="progress-container" style="width: 80%; height: 40px; background-color: #fdacc7; border-radius: 10px; position: relative; overflow: hidden; margin: 0 auto;">
+            <div class="progress-bar" id="barra-gasto" style="height: 100%; background-color: #f787ac; position: absolute; left: 0; top: 0; transition: width 0.5s;"></div>
+            <div class="progress-text" id="limite-texto" style="position: absolute; width: 100%; text-align: center; line-height: 40px; color: #d80048; font-weight: bold; z-index: 1;"></div>
+        </div>
+        <div class="legenda" style="margin-top: 15px;">
+            <span style="display: inline-block; width: 15px; height: 15px; background-color: #f787ac; margin-right: 5px; margin-top: 10px;"></span> Gasto
+            <span style="display: inline-block; width: 15px; height: 15px; background-color: #fdacc7; margin-right: 5px; margin-left: 20px;"></span> Disponível
+            <div style="margin-top: 10px; font-size: 14px; color: #e91e63;">
+                <span id="limite-info"></span>
+            </div>
+        </div>
+    </div>
+    
+    <div class="dicas-card large-card" style="grid-column: span 2; background-color: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); position: relative; height: 260px;">
+        <h3 style="color: #e91e63; text-align: center; padding-top: 10px; padding-bottom: 20px;">Dicas Para As Suas Finanças</h3>
+        <div class="dicas-inner-card" style="background-color: #fdbdd2; padding: 15px; border-radius: 10px; display: flex; align-items: center; justify-content: space-between; padding-top: 25px;">
+            <img src="{{ url_for('static', filename='porquinhodicas.png') }}" alt="Porquinho" style="width: 100px; height: auto; margin-right: 10px;">
+            <div class="dica" id="dica-texto" style="text-align: left; padding-left: 30px;">
+                <strong>Crie um Fundo de Emergência</strong>
+                <p style="margin-top: 10px;">Separe pelo menos 3 a 6 meses de despesas em uma conta separada. Isso garante que você esteja preparado para imprevistos.</p>
+            </div>
+        </div>
+        <button class="seta" onclick="prevDica()" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); background-color: transparent; border: none;">
+            <img src="{{ url_for('static', filename='setaesquerda.png') }}" alt="Seta Esquerda" style="width: 50px; height: 30px; padding-left: 20px;">
+        </button>
+        <button class="seta" onclick="nextDica()" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background-color: transparent; border: none;">
+            <img src="{{ url_for('static', filename='setadireita.png') }}" alt="Seta Direita" style="width: 50px; height: 30px; padding-right: 20px;">
+        </button>
+    </div>
+</div>
+</section>
+
+<div id="form-container" class="form-container" style="display: none;">
+    <div id="form-modal" style="background-color: #fdacc7; padding: 30px; border-radius: 15px;">
+        <h3 id="form-title" style="padding-bottom: 10px; color: #d80048;">Cadastrar Receita</h3>
+        <form id="form" method="POST">
+            <label>Descrição:</label>
+            <input type="text" id="descricao" name="descricao" required>
+            <label>Valor:</label>
+            <input type="number" id="valor" name="valor" required>
+            <label>Data:</label>
+            <input type="date" id="data" name="data" required>
+            <label id="prazo-label" style="display: none;">Prazo de pagamento:</label>
+            <input type="date" id="prazo" name="prazo" style="display: none;">
+            <label>Categoria:</label>
+            <div class="custom-select">
+                <div class="selected"><input type="text" id="categoria-search" placeholder="Selecione uma categoria..." style=" width: calc(100% - 20px); padding: 12px; border-radius: 8px; border: 1px solid #e91e63; background-color: #ffffff; font-size: 16px; color: #fd4b87;"></div>
+                <div class="options" style="max-height: 200px; overflow-y: auto;">
+                    <div class="option" data-value="bares">
+                        <img src="{{ url_for('static', filename='bares.png') }}" alt="Bares"> Bares
+                    </div>
+                    <div class="option" data-value="casa">
+                        <img src="{{ url_for('static', filename='casa.png') }}" alt="Casa"> Casa
+                    </div>
+                    <div class="option" data-value="comida">
+                        <img src="{{ url_for('static', filename='comida.png') }}" alt="Comida"> Comida
+                    </div>
+                    <div class="option" data-value="doações">
+                        <img src="{{ url_for('static', filename='doacoes.png') }}" alt="Doações"> Doações
+                    </div>
+                    <div class="option" data-value="eletrônicos">
+                        <img src="{{ url_for('static', filename='eletronicos.png') }}" alt="Eletrônicos"> Eletrônicos
+                    </div>
+                    <div class="option" data-value="estudo">
+                        <img src="{{ url_for('static', filename='estudo.png') }}" alt="Estudo"> Estudo
+                    </div>
+                    <div class="option" data-value="impostos">
+                        <img src="{{ url_for('static', filename='impostos.png') }}" alt="Impostos"> Impostos
+                    </div>
+                    <div class="option" data-value="maquiagens">
+                        <img src="{{ url_for('static', filename='maquiagens.png') }}" alt="Maquiagens"> Maquiagens
+                    </div>
+                    <div class="option" data-value="papelaria">
+                        <img src="{{ url_for('static', filename='papelaria.png') }}" alt="Papelaria"> Papelaria
+                    </div>
+                    <div class="option" data-value="perfumaria">
+                        <img src="{{ url_for('static', filename='perfumaria.png') }}" alt="Perfumaria"> Perfumaria
+                    </div>
+                    <div class="option" data-value="pets">
+                        <img src="{{ url_for('static', filename='pets.png') }}" alt="Pets"> Pets
+                    </div>
+                    <div class="option" data-value="roupas">
+                        <img src="{{ url_for('static', filename='roupas.png') }}" alt="Roupas"> Roupas
+                    </div>
+                    <div class="option" data-value="salário">
+                        <img src="{{ url_for('static', filename='salario.png') }}" alt="Salário"> Salário
+                    </div>
+                    <div class="option" data-value="sapatos">
+                        <img src="{{ url_for('static', filename='sapatos.png') }}" alt="Sapatos"> Sapatos
+                    </div>
+                    <div class="option" data-value="saúde">
+                        <img src="{{ url_for('static', filename='saude.png') }}" alt="Saúde"> Saúde
+                    </div>
+                    <div class="option" data-value="supermercado">
+                        <img src="{{ url_for('static', filename='supermercado.png') }}" alt="Supermercado"> Supermercado
+                    </div>
+                    <div class="option" data-value="trabalho">
+                        <img src="{{ url_for('static', filename='trabalho.png') }}" alt="Trabalho"> Trabalho
+                    </div>
+                    <div class="option" data-value="transporte">
+                        <img src="{{ url_for('static', filename='transporte.png') }}" alt="Transporte"> Transporte
+                    </div>
+                    <div class="option" data-value="viagens">
+                        <img src="{{ url_for('static', filename='viagens.png') }}" alt="Viagens"> Viagens
+                    </div>
+                    <div class="option" data-value="outros">
+                        <img src="{{ url_for('static', filename='outros.png') }}" alt="Outros"> Outros
+                    </div>
+                </div>
+            </div>
+            <input type="hidden" id="categoria" name="categoria" required>
+            <div class="button-container" style="display: flex; justify-content: center; margin-top: 20px;">
+                <button type="button" onclick="closeForm()" class="btn-imagem" title="Cancelar">
+                    <img src="{{ url_for('static', filename='cancelar.png') }}" alt="Cancelar" style="width: 50px; height: 45px;">
+                </button>
+                <button type="submit" class="btn-imagem" title="Confirmar" style="margin-left: 20px;">
+                    <img src="{{ url_for('static', filename='confirmar.png') }}" alt="Confirmar" style="width: 50px; height: 45px;">
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+    body {
+        font-family: 'Trebuchet MS', 'Lucida Sans Unicode', 'Lucida Grande', 'Lucida Sans', Arial, sans-serif;
+        background-color: #ff6a9c;
+        margin: 0;
+        padding: 0;
+    }
+
+    .user-dashboard {
+        max-width: 800px;
+        margin: auto;
+        padding: 20px;
+        position: relative; 
+    }
+
+    .user-actions {
+        display: flex;
+        align-items: center;
+    }
+
+    .dashboard-content {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+    }
+
+    .small-card, .large-card {
+        background: white;
+        padding: 15px;
+        border-radius: 10px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        text-align: center;
+    }
+
+    .large-card {
+        grid-column: span 2;
+    }
+
+    .saldo-card, .actions, .limite-card, .dicas-card {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .saldo-container {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .btn-imagem {
+        background: none;
+        border: none;
+        cursor: pointer;
+    }
+
+    .icone-saldo {
+        width: 60px;
+        height: 60px;
+    }
+
+    .dica {
+        display: inline-block;
+        width: 350px;
+    }
+
+    .form-container {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: rgba(255, 204, 229, 0.7);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 1000;
+    }
+
+    #form-modal {
+        background: white;
+        padding: 30px;
+        border-radius: 15px;
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+        width: 350px;
+        text-align: center;
+    }
+
+    #form input {
+        width: calc(100% - 20px);
+        margin: 15px 0;
+        padding: 12px;
+        border-radius: 8px;
+        border: 1px solid #e91e63;
+        background-color: #ffffff;
+        font-size: 16px;
+        color: #fd4b87;
+    }
+
+    #form label {
+        color: #e91e63;
+        font-weight: bold;
+    }
+
+    .button-container {
+        display: flex;
+        justify-content: center;
+    }
+
+    .btn-imagem-ADD {
+        background: none;
+        border: none;
+        cursor: pointer;
+        transition: transform 0.2s;
+    }
+
+    .btn-imagem-ADD:hover {
+        transform: scale(1.1);
+    }
+
+    .seta {
+        background-color: transparent;
+        border: none;
+        cursor: pointer;
+        position: absolute;
+    }
+
+    .custom-select {
+        position: relative;
+        width: 100%;
+        cursor: pointer;
+        margin: 0px 0;
+    }
+
+    .options {
+        position: absolute;
+        background: white;
+        border: 1px solid #ccc;
+        border-radius: 8px;
+        z-index: 1;
+        width: 200px;
+        max-height: 200px;
+        overflow-y: auto;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        display: none;
+        top: -40px;
+        left: calc(100% + 10px);
+    }
+
+    .options.show {
+        display: block;
+    }
+
+    .option {
+        padding: 12px;
+        display: flex;
+        align-items: center;
+        cursor: pointer;
+        font-size: 16px;
+    }
+
+    .option img {
+        width: 24px;
+        height: 24px;
+        margin-right: 10px;
+    }
+
+    .option:hover {
+        background: #f0f0f0;
+    }
+
+    .notification-bar {
+        position: absolute;
+        top: 90px;
+        margin-left: 950px;
+        background-color: #ffe0e0;
+        border: 1px solid #f8b3b3;
+        border-radius: 8px;
+        padding: 15px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        display: none;
+        z-index: 1000;
+        width: 300px;
+        font-size: 14px;
+    }
+
+    .notification-bar h4 {
+        color: #d80048;
+        margin: 0 0 10px;
+        font-size: 18px;
+        text-align: center;
+    }
+
+    .notification-bar ul {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+
+    .notification-bar li {
+        background-color: #ffd1d1;
+        border: 1px solid #f0a3a3;
+        border-radius: 5px;
+        padding: 10px;
+        margin-bottom: 5px;
+        transition: background-color 0.3s;
+    }
+
+    .notification-bar li:hover {
+        background-color: #ffb3b3;
+    }
+
+    .notification-bar button {
+        background-color: #d80048;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        padding: 5px 10px;
+        cursor: pointer;
+        font-size: 12px;
+        margin-top: 10px;
+        display: block;
+        width: 100%;
+    }
+
+    .notification-bar button:hover {
+        background-color: #b0002d;
+    }
+
+    #categoria-search {
+        outline: none;
+        color: #fd4b87;
+        
+    }
+
+    #categoria-search::placeholder {
+        color: #ff80ab;
+        opacity: 0.7;
+    }
+
+    .option.hidden {
+        display: none;
+    }
+
+    .progress-container {
+        width: 80%;
+        background-color: #ffe4e9;
+        border-radius: 10px;
+        overflow: hidden;
+        height: 25px;
+        position: relative;
+    }
+
+    .progress-bar {
+        background-color: #f06292;
+        height: 100%;
+        text-align: center;
+        color: white;
+        line-height: 25px;
+        transition: width 0.5s;
+    }
+</style>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+    let dicaIndex = 0;
+
+    const dicas = [
+        {
+            title: "Crie um Fundo de Emergência",
+            text: "Separe pelo menos 3 a 6 meses de despesas em uma conta separada. Isso garante que você esteja preparado para imprevistos."
+        },
+        {
+            title: "Corte Despesas Supérfluas",
+            text: "Revise suas assinaturas e serviços. Cancelar apenas uma assinatura pode economizar muito no final do mês!"
+        },
+        {
+            title: "Estabeleça Metas Financeiras Claras",
+            text: "Defina objetivos específicos, como 'quero economizar R$ 5.000 em um ano' e acompanhe seu progresso regularmente."
+        },
+        {
+            title: "Evite Compras por Impulso",
+            text: "Espere 24 horas antes de fazer uma compra não planejada. Isso pode ajudar a evitar arrependimentos."
+        },
+        {
+            title: "Aproveite Ofertas e Descontos",
+            text: "Use cupons e aproveite promoções. Isso pode fazer uma grande diferença no seu orçamento mensal."
+        }
+    ];
+
+    function updateDica() {
+        const dica = dicas[dicaIndex];
+        document.getElementById('dica-texto').innerHTML = `<strong>${dica.title}</strong><p style="margin-top: 10px;">${dica.text}</p>`;
+    }
+
+    function nextDica() {
+        dicaIndex = (dicaIndex + 1) % dicas.length;
+        updateDica();
+    }
+
+    function prevDica() {
+        dicaIndex = (dicaIndex - 1 + dicas.length) % dicas.length;
+        updateDica();
+    }
+
+    function toggleSaldo() {
+        let saldo = document.getElementById("saldo");
+        let olho = document.getElementById("toggle-saldo");
+        let valorReal = {{ saldo_total }};
+
+        if (saldo.innerText === "R$ ----") {
+            saldo.innerText = formatarMoeda(valorReal);
+            olho.src = "{{ url_for('static', filename='naovisualizar.png') }}";
+        } else {
+            saldo.innerText = "R$ ----"; 
+            olho.src = "{{ url_for('static', filename='visualizar.png') }}";
+        }
+    }
+
+    function formatarMoeda(valor) {
+        return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    }
+
+    function showReceitaForm() {
+        document.getElementById("form-title").innerText = "Cadastrar Receita";
+        document.getElementById("prazo-label").style.display = "none";
+        document.getElementById("prazo").style.display = "none";
+        document.getElementById("form-container").style.display = "flex";
+    }
+
+    function showDespesaForm() {
+        document.getElementById("form-title").innerText = "Cadastrar Despesa";
+        document.getElementById("prazo-label").style.display = "inline";
+        document.getElementById("prazo").style.display = "inline";
+        document.getElementById("form-container").style.display = "flex";
+    }
+
+    function closeForm() {
+        document.getElementById("form-container").style.display = "none";
+        document.getElementById("form").reset(); 
+        document.getElementById("categoria-search").value = "";
+        document.querySelector('.options').classList.remove('show');
+        const options = document.querySelectorAll('.option');
+        options.forEach(option => {
+            option.style.display = '';
+        });
+    }
+    
+    document.querySelector('.selected').addEventListener('click', function (event) {
+        event.stopPropagation();
+        document.querySelector('.options').classList.toggle('show');
+    });
+    
+    document.querySelectorAll('.option').forEach(option => {
+        option.addEventListener('click', function () {
+            const selectedValue = this.getAttribute('data-value');
+            document.getElementById('categoria').value = selectedValue;
+
+            document.getElementById('categoria-search').value = this.textContent;
+
+            document.querySelector('.options').classList.remove('show');
+        });
+    });
+
+    document.addEventListener('click', function (event) {
+        if (!event.target.closest('.custom-select')) {
+            document.querySelector('.options').classList.remove('show');
+        }
+    });
+
+    function showFlashMessage(message) {
+        const flashContainer = document.getElementById('flash-messages');
+        flashContainer.innerHTML = `<div><p>${message}</p></div>`;
+        flashContainer.style.display = 'block';
+        
+        setTimeout(() => {
+            flashContainer.style.display = 'none';
+        }, 5000);
+    }
+
+    document.getElementById("form").onsubmit = function(event) {
+        event.preventDefault();
+        const descricao = document.getElementById("descricao").value;
+        const valor = document.getElementById("valor").value;
+        const data = document.getElementById("data").value;
+        const prazo = document.getElementById("prazo").value;
+        const categoria = document.getElementById("categoria").value;
+        const tipo = document.getElementById("form-title").innerText.includes("Receita") ? 'receita' : 'despesa';
+
+        if (!descricao || !valor || !data || !categoria) {
+            showFlashMessage('Todos os campos são obrigatórios');
+            return;
+        }
+
+        if (tipo === 'despesa' && !prazo) {
+            showFlashMessage('Para despesas, o prazo é obrigatório');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('descricao', descricao);
+        formData.append('valor', valor);
+        formData.append('data', data);
+        formData.append('categoria', categoria);
+        
+        if (tipo === 'despesa') {
+            formData.append('prazo', prazo);
+        }
+
+        fetch('/adicionar_' + tipo, {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Erro na requisição');
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                showFlashMessage(data.message);
+                closeForm();
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1000);
+            } else {
+                showFlashMessage(data.error || 'Erro ao cadastrar transação');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showFlashMessage('Falha ao conectar com o servidor');
+        });
+    };
+
+    updateDica();
+
+    document.getElementById('categoria-search').addEventListener('input', function() {
+        const searchValue = this.value.toLowerCase();
+        const options = document.querySelectorAll('.option');
+        
+        options.forEach(option => {
+            const text = option.textContent.toLowerCase();
+            if (text.includes(searchValue)) {
+                option.style.display = '';
+            } else {
+                option.style.display = 'none';
+            }
+        });
+    });
+
+    const selected = document.querySelector('.selected');
+    const optionsContainer = document.querySelector('.options');
+
+    selected
+
+
+    function toggleConfiguracoes() {
+        window.location.href = "{{ url_for('configuracoes') }}";
+    }
+
+    function toggleNotificationBar() {
+            const notificationBar = document.getElementById("notification-bar");
+            notificationBar.style.display = notificationBar.style.display === "none" ? "block" : "none";
+            if (notificationBar.style.display === "block") {
+                fetchNotifications();
+            }
+        }
+
+        function fetchNotifications() {
+            fetch('/notificacoes')
+                .then(response => response.json())
+                .then(data => {
+                    const notificationList = document.getElementById('notification-list');
+                    notificationList.innerHTML = '';
+
+                    if (data.despesas && data.despesas.length > 0) {
+                        data.despesas.forEach(despesa => {
+                            const li = document.createElement('li');
+                            li.innerText = `A despesa "${despesa.descricao}" vence em ${new Date(despesa.prazo).toLocaleDateString()}.`;
+                            notificationList.appendChild(li);
+                        });
+                    }
+
+                    if (data.metas_atingidas && data.metas_atingidas.length > 0) {
+                        data.metas_atingidas.forEach(meta => {
+                            const li = document.createElement('li');
+                            li.className = 'meta-atingida';
+                            li.innerText = `Parabéns! Você atingiu a meta do cofrinho "${meta.nome}"!`;
+                            notificationList.appendChild(li);
+                        });
+                    }
+
+                    if (notificationList.children.length === 0) {
+                        notificationList.innerHTML = '<li>Nenhuma notificação no momento.</li>';
+                    }
+                })
+                .catch(error => console.error('Erro ao buscar notificações:', error));
+        }
+
+        function clearNotifications() {
+            fetch('/limpar_notificacoes', {
+                method: 'POST'
+            })
+            .then(response => {
+                if (response.ok) {
+                    const notificationList = document.getElementById('notification-list');
+                    notificationList.innerHTML = '<li>Nenhuma notificação no momento.</li>';
+                } else {
+                    alert("Erro ao limpar notificações.");
+                }
+            })
+            .catch(error => console.error('Erro ao limpar notificações:', error));
+        }
+
+            function atualizarBarraProgresso(limite, gasto) {
+                const barraGasto = document.getElementById('barra-gasto');
+                const limiteTexto = document.getElementById('limite-texto');
+                const limiteInfo = document.getElementById('limite-info');
+                
+                const porcentagem = (gasto / limite) * 100;
+                const porcentagemExibida = Math.min(porcentagem, 100);
+                
+                barraGasto.style.width = `${porcentagemExibida}%`;
+                
+                limiteTexto.innerText = `${porcentagem.toFixed(1)}% utilizado`;
+                
+                const textoDisponivel = limite - gasto > 0 ? 
+                    `Disponível: R$ ${(limite - gasto).toFixed(2)}` : 
+                    `Excedido: R$ ${(gasto - limite).toFixed(2)}`;
+                    
+                limiteInfo.innerHTML = `
+                    <strong>Total:</strong> R$ ${limite.toFixed(2)} | 
+                    <strong>Gasto:</strong> R$ ${gasto.toFixed(2)} | 
+                    <strong>${textoDisponivel}</strong>
+                `;
+                
+                if (porcentagem > 100) {
+                    barraGasto.style.backgroundColor = '#d80048'; 
+                    barraGasto.style.width = '100%'; 
+                    limiteTexto.style.color = '#ffffff';
+                    limiteTexto.innerHTML = `${porcentagem.toFixed(1)}% <span style="font-size:0.8em;">(Limite excedido!)</span>`;
+                } 
+                else if (porcentagem > 80) {
+                    barraGasto.style.backgroundColor = '#f06292';
+                    limiteTexto.style.color = '#d80048'; 
+                }
+                else {
+                    barraGasto.style.backgroundColor = '#f06292'; 
+                    limiteTexto.style.color = '#d80048'; 
+                }
+            }
+
+            fetch('/dados_limite')
+                .then(response => response.json())
+                .then(data => {
+                    atualizarBarraProgresso(data.limite, data.gasto);
+                })
+                .catch(error => console.error('Erro ao buscar dados do limite:', error));
+    </script>
+
+{% endblock %}

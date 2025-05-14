@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block title %}Login{% endblock %}
+
+{% block content %}
+<section class="login-section">
+    
+    <header class="navbar">
+        <div class="logo">
+            <img src="{{ url_for('static', filename='ECONIZZE.png') }}" style="height: 60px; width: 190px;" alt="Logomarca">
+        </div>
+        
+        <div>
+            <a href="/" class="btn">Voltar à Página Inicial</a>
+        </div>
+    </header>
+
+    <div class="login-container">
+        
+        <div class="login-image">
+            <img src="{{ url_for('static', filename='porquinho2.png') }}" alt="Imagem Decorativa">
+        </div>
+
+        
+        <div class="login-form">
+            <h2>Entrar</h2>
+
+            {% with messages = get_flashed_messages() %}
+                {% if messages %}
+                    <div class="flash-messages">
+                        {% for message in messages %}
+                            <p>{{ message }}</p>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endwith %}
+
+            <form action="/login" method="POST">
+                <label for="email">Email</label>
+                <input type="email" id="email" name="email" required placeholder="Digite seu email">
+
+                <label for="password">Senha</label>
+                <input type="password" id="password" name="password" required placeholder="Digite sua senha">
+
+                <button type="submit" class="btn primary">Entrar</button>
+            </form>
+            <p class="signup-link">Não tem uma conta? <a href="/cadastro">Cadastre-se</a></p>
+        </div>
+    </div>
+</section>
+{% endblock %}

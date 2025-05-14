@@ -1,0 +1,1307 @@
+{% extends "base.html" %}
+
+{% block title %}Histórico{% endblock %}
+
+{% block content %}
+<section class="user-historico">
+    <header class="navbar">
+        <div class="logo">
+            <img src="{{ url_for('static', filename='ECONIZZE.png') }}" class="logo-img" alt="Logomarca">
+        </div>
+        <nav class="nav-links">
+            <a href="{{ url_for('usuario') }}" class="dashboard-btn">Visão Geral</a>
+            <a href="{{ url_for('historico') }}" class="dashboard-btn active">Histórico</a>
+            <a href="{{ url_for('relatorios') }}" class="dashboard-btn">Relatórios</a>
+            <a href="{{ url_for('metas') }}" class="dashboard-btn">Metas</a>
+        </nav>
+        <div class="user-actions" style="margin-right: 20px;">
+            <button class="btn-imagem" style="background: none; border: none; padding: 0; cursor: pointer;" onclick="toggleNotificationBar()">
+                <img src="{{ url_for('static', filename='sininho.png') }}" alt="Notificações" style="display: block; width: 25px; height: 25px;">
+            </button>
+            <span style="margin: 0 15px;"></span>
+            <button class="btn-imagem" style="background: none; border: none; padding: 0; cursor: pointer;" onclick="toggleConfiguracoes()">
+                <img src="{{ url_for('static', filename='home.png') }}" alt="Configurações" style="display: block; width: 25px; height: 25px;">
+            </button>
+        </div>
+    </header>
+    
+    <div id="flash-messages" style="text-align: center; position: fixed; width: 100%; display: none; top: 90px; left: 0; z-index: 1000; margin: 0 auto; padding: 10px; max-width: 400px; border: 1px solid #ff80ab; background-color: #ffc1e3; color: #d81b60; border-radius: 20px; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); margin-left: 35%;">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div>
+                        <p>{{ message }}</p>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+    </div>
+
+    <div id="notification-bar" class="notification-bar" style="display: none;">
+        <h4 style="display: flex; justify-content: space-between; align-items: center;">
+            Alertas
+            <span onclick="toggleNotificationBar()" style="cursor: pointer; font-size: 18px; color: #d80048;">
+                &times;
+            </span>
+        </h4>
+        <ul id="notification-list"></ul>
+        <button onclick="clearNotifications()" style="margin-top: 5px; background-color: #d80048; color: white; border: none; border-radius: 5px; padding: 5px 10px;">
+            Limpar Notificações
+        </button>
+    </div>
+
+    <div class="historico-container">
+        <div class="header-historico">
+            <h2>Histórico</h2>
+        </div>
+        <div class="filtros-container" style="display: flex; justify-content: space-between; margin-bottom: 20px;">
+            <button class="btn-filtro" onclick="openFilterModal()">Filtros</button>
+            <button class="btn-filtro" onclick="clearFilters()">Limpar Filtros</button>
+        </div>
+        <div class="navegacao-meses">
+            <button class="seta" onclick="prevMonth()">
+                <img src="{{ url_for('static', filename='setaesquerda.png') }}" alt="Seta Esquerda" class="seta-img">
+            </button>
+            <span id="mes-atual"></span>
+            <button class="seta" onclick="nextMonth()">
+                <img src="{{ url_for('static', filename='setadireita.png') }}" alt="Seta Direita" class="seta-img">
+            </button>
+        </div>
+
+        <div class="transacoes">
+            <div class="despesas">
+                <div id="lista-despesas"></div>
+            </div>
+
+            <div class="receitas">
+                <div id="lista-receitas"></div>
+            </div>
+        </div>
+
+        <div class="vazio" id="msg-vazio" style="display: none; margin-top: 20px;">
+            <div class="vazio-container">
+                <img src="{{ url_for('static', filename='porquinhoduvida2.png') }}" alt="Porquinho" class="porquinho-img">
+                <p>Nenhuma receita ou despesa registrada neste período.</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <div class="modal-header">
+                <img id="modal-categoria-imagem" src="" alt="Categoria" class="categoria-img-modal">
+                <h2 id="modal-descricao" style="flex-grow: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"></h2>
+                <p id="modal-valor" class="valor-modal"></p>
+            </div>
+            <div class="modal-body">
+                <p><strong>Categoria:</strong> <span id="modal-categoria"></span></p>
+                <p><strong>Data:</strong> <span id="modal-data"></span></p>
+                <p id="modal-prazo-container" style="display: none;">
+                    <strong>Prazo de Pagamento:</strong> <span id="modal-prazo"></span>
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-edit" onclick="openEditModal(currentTransactionId)">
+                    <img src="{{ url_for('static', filename='editar.png') }}" alt="Editar">
+                </button>
+                <button class="btn-delete" onclick="deleteTransaction(transacaoTipo)">
+                    <img src="{{ url_for('static', filename='excluir.png') }}" alt="Excluir">
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-filtros" class="modal-filtros" style="display: none;">
+        <div class="modal-filtros-content">
+            <span class="close" onclick="closeFilterModal()" style="color: #d80048; font-size: 28px; float: right; margin-top: -20px;">&times;</span>
+            <div class="modal-filtros-header">
+                <h2>Filtrar por</h2>
+            </div>
+            <div class="modal-filtros-body">
+                <div class="modal-filtros-body">
+                    <label for="categoria">Categoria:</label>
+                    <div class="custom-select">
+                        <div class="selected" onclick="toggleOptions('filter')">Selecionar categoria...</div>
+                        <div class="options" id="filter-options" style="display: none; max-height: 200px; overflow-y: auto; margin-left: 360px;">
+                            <div class="option" data-value="bares" onclick="selectCategory('filter', 'bares')">
+                                <img src="{{ url_for('static', filename='bares.png') }}" alt="Bares"> Bares
+                            </div>
+                            <div class="option" data-value="casa" onclick="selectCategory('filter', 'casa')">
+                                <img src="{{ url_for('static', filename='casa.png') }}" alt="Casa"> Casa
+                            </div>
+                            <div class="option" data-value="comida" onclick="selectCategory('filter', 'comida')">
+                                <img src="{{ url_for('static', filename='comida.png') }}" alt="Comida"> Comida
+                            </div>
+                            <div class="option" data-value="doações" onclick="selectCategory('filter', 'doações')">
+                                <img src="{{ url_for('static', filename='doacoes.png') }}" alt="Doações"> Doações
+                            </div>
+                            <div class="option" data-value="eletrônicos" onclick="selectCategory('filter', 'eletrônicos')">
+                                <img src="{{ url_for('static', filename='eletronicos.png') }}" alt="Eletrônicos"> Eletrônicos
+                            </div>
+                            <div class="option" data-value="estudo" onclick="selectCategory('filter', 'estudo')">
+                                <img src="{{ url_for('static', filename='estudo.png') }}" alt="Estudo"> Estudo
+                            </div>
+                            <div class="option" data-value="impostos" onclick="selectCategory('filter', 'impostos')">
+                                <img src="{{ url_for('static', filename='impostos.png') }}" alt="Impostos"> Impostos
+                            </div>
+                            <div class="option" data-value="maquiagens" onclick="selectCategory('filter', 'maquiagens')">
+                                <img src="{{ url_for('static', filename='maquiagens.png') }}" alt="Maquiagens"> Maquiagens
+                            </div>
+                            <div class="option" data-value="papelaria" onclick="selectCategory('filter', 'papelaria')">
+                                <img src="{{ url_for('static', filename='papelaria.png') }}" alt="Papelaria"> Papelaria
+                            </div>
+                            <div class="option" data-value="perfumaria" onclick="selectCategory('filter', 'perfumaria')">
+                                <img src="{{ url_for('static', filename='perfumaria.png') }}" alt="Perfumaria"> Perfumaria
+                            </div>
+                            <div class="option" data-value="pets" onclick="selectCategory('filter', 'pets')">
+                                <img src="{{ url_for('static', filename='pets.png') }}" alt="Pets"> Pets
+                            </div>
+                            <div class="option" data-value="roupas" onclick="selectCategory('filter', 'roupas')">
+                                <img src="{{ url_for('static', filename='roupas.png') }}" alt="Roupas"> Roupas
+                            </div>
+                            <div class="option" data-value="salário" onclick="selectCategory('filter', 'salário')">
+                                <img src="{{ url_for('static', filename='salario.png') }}" alt="Salário"> Salário
+                            </div>
+                            <div class="option" data-value="sapatos" onclick="selectCategory('filter', 'sapatos')">
+                                <img src="{{ url_for('static', filename='sapatos.png') }}" alt="Sapatos"> Sapatos
+                            </div>
+                            <div class="option" data-value="saúde" onclick="selectCategory('filter', 'saúde')">
+                                <img src="{{ url_for('static', filename='saude.png') }}" alt="Saúde"> Saúde
+                            </div>
+                            <div class="option" data-value="supermercado" onclick="selectCategory('filter', 'supermercado')">
+                                <img src="{{ url_for('static', filename='supermercado.png') }}" alt="Supermercado"> Supermercado
+                            </div>
+                            <div class="option" data-value="trabalho" onclick="selectCategory('filter', 'trabalho')">
+                                <img src="{{ url_for('static', filename='trabalho.png') }}" alt="Trabalho"> Trabalho
+                            </div>
+                            <div class="option" data-value="transporte" onclick="selectCategory('filter', 'transporte')">
+                                <img src="{{ url_for('static', filename='transporte.png') }}" alt="Transporte"> Transporte
+                            </div>
+                            <div class="option" data-value="viagens" onclick="selectCategory('filter', 'viagens')">
+                                <img src="{{ url_for('static', filename='viagens.png') }}" alt="Viagens"> Viagens
+                            </div>
+                            <div class="option" data-value="outros" onclick="selectCategory('filter', 'outros')">
+                                <img src="{{ url_for('static', filename='outros.png') }}" alt="Outros"> Outros
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <input type="hidden" id="filtro-categoria" name="categoria">
+                <label for="tipo">Tipo:</label>
+                <select id="tipo" style="width: 340px;">
+                    <option value="">Todos</option>
+                    <option value="receita">Receita</option>
+                    <option value="despesa">Despesa</option>
+                </select>
+
+                <label for="data">Data:</label>
+                <input type="date" id="data" style="width: 340px;">
+
+                <label for="prazo">Prazo:</label>
+                <input type="date" id="prazo" style="width: 340px;">
+            </div>
+            <div class="modal-filtros-footer">
+                <button class="btn-aplicar" onclick="aplicarFiltros()">Aplicar Filtros</button>
+            </div>
+        </div>
+    </div>
+</section>
+
+<div id="modal-edit" class="modal-edit" style="display: none;">
+        <div id="form-modal" style="background-color: #fdacc7; padding: 30px; border-radius: 15px;">
+
+            <div id="flash-messages-senha" style="text-align: center; margin-bottom: 10px;">
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for category, message in messages %}
+                            {% if category == 'senha' %}
+                                <div class="flash-messages" style="padding: 10px; margin: 10px 0; border: 1px solid #f5c6cb; background-color: #f8d7da; color: #721c24; border-radius: 5px; text-align: center; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);">
+                                    <p>{{ message }}</p>
+                                </div>
+                            {% endif %}
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
+            </div>
+            <h3 id="form-title" style="padding-bottom: 10px; color: #d80048;">Editar Transação</h3>
+            <form id="edit-form">
+                <label>Descrição:</label>
+                <input type="text" id="edit-descricao" required>
+                <label>Valor:</label>
+                <input type="number" id="edit-valor" required>
+                <label>Data:</label>
+                <input type="date" id="edit-data" required>
+                <label id="edit-prazo-label" style="display: none;">Prazo de pagamento:</label>
+                <input type="date" id="edit-prazo" style="display: none;">
+                <label>Categoria:</label>
+                <div class="custom-select">
+                    <div class="selected" onclick="toggleOptions('edit')">Selecionar categoria...</div>
+                    <div class="options" id="edit-options" style="display: none; max-height: 200px; overflow-y: auto;">
+                        <div class="option" data-value="bares" onclick="selectCategory('edit', 'bares')">
+                            <img src="{{ url_for('static', filename='bares.png') }}" alt="Bares"> Bares
+                        </div>
+                        <div class="option" data-value="casa" onclick="selectCategory('edit', 'casa')">
+                            <img src="{{ url_for('static', filename='casa.png') }}" alt="Casa"> Casa
+                        </div>
+                        <div class="option" data-value="comida" onclick="selectCategory('edit', 'comida')">
+                            <img src="{{ url_for('static', filename='comida.png') }}" alt="Comida"> Comida
+                        </div>
+                        <div class="option" data-value="doações" onclick="selectCategory('edit', 'doações')">
+                            <img src="{{ url_for('static', filename='doacoes.png') }}" alt="Doações"> Doações
+                        </div>
+                        <div class="option" data-value="eletrônicos" onclick="selectCategory('edit', 'eletrônicos')">
+                            <img src="{{ url_for('static', filename='eletronicos.png') }}" alt="Eletrônicos"> Eletrônicos
+                        </div>
+                        <div class="option" data-value="estudo" onclick="selectCategory('edit', 'estudo')">
+                            <img src="{{ url_for('static', filename='estudo.png') }}" alt="Estudo"> Estudo
+                        </div>
+                        <div class="option" data-value="impostos" onclick="selectCategory('edit', 'impostos')">
+                            <img src="{{ url_for('static', filename='impostos.png') }}" alt="Impostos"> Impostos
+                        </div>
+                        <div class="option" data-value="maquiagens" onclick="selectCategory('edit', 'maquiagens')">
+                            <img src="{{ url_for('static', filename='maquiagens.png') }}" alt="Maquiagens"> Maquiagens
+                        </div>
+                        <div class="option" data-value="papelaria" onclick="selectCategory('edit', 'papelaria')">
+                            <img src="{{ url_for('static', filename='papelaria.png') }}" alt="Papelaria"> Papelaria
+                        </div>
+                        <div class="option" data-value="perfumaria" onclick="selectCategory('edit', 'perfumaria')">
+                            <img src="{{ url_for('static', filename='perfumaria.png') }}" alt="Perfumaria"> Perfumaria
+                        </div>
+                        <div class="option" data-value="pets" onclick="selectCategory('edit', 'pets')">
+                            <img src="{{ url_for('static', filename='pets.png') }}" alt="Pets"> Pets
+                        </div>
+                        <div class="option" data-value="roupas" onclick="selectCategory('edit', 'roupas')">
+                            <img src="{{ url_for('static', filename='roupas.png') }}" alt="Roupas"> Roupas
+                        </div>
+                        <div class="option" data-value="salário" onclick="selectCategory('edit', 'salário')">
+                            <img src="{{ url_for('static', filename='salario.png') }}" alt="Salário"> Salário
+                        </div>
+                        <div class="option" data-value="sapatos" onclick="selectCategory('edit', 'sapatos')">
+                            <img src="{{ url_for('static', filename='sapatos.png') }}" alt="Sapatos"> Sapatos
+                        </div>
+                        <div class="option" data-value="saúde" onclick="selectCategory('edit', 'saúde')">
+                            <img src="{{ url_for('static', filename='saude.png') }}" alt="Saúde"> Saúde
+                        </div>
+                        <div class="option" data-value="supermercado" onclick="selectCategory('edit', 'supermercado')">
+                            <img src="{{ url_for('static', filename='supermercado.png') }}" alt="Supermercado"> Supermercado
+                        </div>
+                        <div class="option" data-value="trabalho" onclick="selectCategory('edit', 'trabalho')">
+                            <img src="{{ url_for('static', filename='trabalho.png') }}" alt="Trabalho"> Trabalho
+                        </div>
+                        <div class="option" data-value="transporte" onclick="selectCategory('edit', 'transporte')">
+                            <img src="{{ url_for('static', filename='transporte.png') }}" alt="Transporte"> Transporte
+                        </div>
+                        <div class="option" data-value="viagens" onclick="selectCategory('edit', 'viagens')">
+                            <img src="{{ url_for('static', filename='viagens.png') }}" alt="Viagens"> Viagens
+                        </div>
+                        <div class="option" data-value="outros" onclick="selectCategory('edit', 'outros')">
+                            <img src="{{ url_for('static', filename='outros.png') }}" alt="Outros"> Outros
+                        </div>
+                    </div>
+                </div>
+                <input type="hidden" id="edit-categoria" name="categoria" required>
+                <div class="button-container" style="display: flex; justify-content: center; margin-top: 20px;">
+                    <button type="button" onclick="closeEditModal()" class="btn-imagem" title="Cancelar">
+                        <img src="{{ url_for('static', filename='cancelar.png') }}" alt="Cancelar" style="width: 50px; height: 45px;">
+                    </button>
+                    <button type="submit" class="btn-imagem" title="Confirmar" style="margin-left: 20px;">
+                        <img src="{{ url_for('static', filename='confirmar.png') }}" alt="Confirmar" style="width: 50px; height: 45px;">
+                    </button>
+                </div>
+            </form>
+        </div>
+</div>
+
+<style>
+    body {
+        font-family: 'Trebuchet MS', 'Lucida Sans Unicode', 'Lucida Grande', 'Lucida Sans', Arial, sans-serif;
+        background-color: #ff6a9c;
+        margin: 0;
+        padding: 0;
+    }
+
+    .user-historico {
+        max-width: 800px;
+        margin: 20px auto;
+        padding: 30px;
+        margin-top: 150px;
+        background-color: white;
+        border-radius: 15px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    }
+
+    .header-historico {
+        display: flex;
+        justify-content: flex-start;
+        align-items: center;
+        margin-bottom: 20px;
+    }
+
+    .historico-container h2 {
+        color: #e91e63;
+        margin: 0;
+    }
+
+    .filtros-container {
+        display: flex;
+        justify-content: flex-start;
+        margin-bottom: 20px;
+    }
+
+    .navegacao-meses {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin: 20px 0;
+        font-weight: bold;
+        color: #e91e63;
+    }
+
+    .navegacao-meses .seta {
+        background: none;
+        border: none;
+        cursor: pointer;
+        padding: 0 10px;
+    }
+
+    .seta-img {
+        width: 15px;
+        height: auto;
+    }
+
+    .btn-filtro {
+        flex: 1; 
+        padding: 5px;
+        background-color: #fdbdd2;
+        color: #e91e63;
+        font-weight: bold;
+        border: none;
+        border-radius: 25px;
+        cursor: pointer;
+        transition: background-color 0.3s;
+        font-size: 16px;
+        margin: 0 5px; 
+    }
+
+    .btn-filtro:hover {
+        background-color: #f8a3bf;
+    }
+
+    .transacoes {
+        display: flex;
+        justify-content: center;
+        flex-wrap: wrap;
+        margin-top: 20px;
+    }
+
+    .despesas, .receitas {
+        width: 40%;
+        margin: 0 2.5%;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-start;
+    }
+
+    .transacao {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 5px 0;
+        border-bottom: 1px solid #fdbdd2;
+        cursor: pointer;
+    }
+
+    .transacao img {
+        width: 30px;
+        height: 30px;
+        margin-right: 20px;
+    }
+
+    .descricao {
+        flex-grow: 1;
+        margin-right: 30px;
+    }
+
+    .valor {
+        font-weight: bold;
+    }
+
+    .despesa {
+        color: red;
+    }
+
+    .receita {
+        color: green;
+    }
+
+    .vazio {
+        display: flex;
+        justify-content: center;
+        margin-top: 20px;
+        text-align: center;
+    }
+
+    .vazio-container {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .porquinho-img {
+        width: 100px;
+        height: auto;
+        margin-right: 10px;
+    }
+
+    .modal {
+        display: flex;
+        position: fixed;
+        z-index: 1000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        overflow: auto;
+        background-color: rgba(255, 204, 229, 0.7);
+        justify-content: center;
+        align-items: center;
+    }
+
+    .modal-content {
+        background-color: #fff;
+        margin: 20px;
+        padding: 20px;
+        border: none;
+        border-radius: 10px;
+        width: 90%;
+        max-width: 400px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    }
+
+    .close {
+        color: #e91e63;
+        font-size: 28px;
+        font-weight: bold;
+        cursor: pointer;
+    }
+
+    .close:hover {
+        color: #ff4081;
+    }
+
+    .modal-header {
+        display: flex;
+        align-items: center;
+        border-bottom: 2px solid #e91e63;
+        padding-bottom: 10px;
+    }
+
+    .categoria-img-modal {
+        width: 50px;
+        height: 50px;
+        margin-right: 10px;
+    }
+
+    .modal-body {
+        margin-top: 10px;
+    }
+
+    .modal-body p {
+        margin: 5px 0;
+        font-size: 16px;
+    }
+
+    .valor-modal {
+        font-weight: bold;
+        font-size: 20px;
+        color: #e91e63;
+        padding-left: 20px;
+    }
+
+    .modal-footer {
+        display: flex;
+        justify-content: center;
+        margin-top: 20px;
+        gap: 10px;
+    }
+
+    .modal-footer button {
+        background: none;
+        border: none;
+        cursor: pointer;
+        transition: transform 0.2s;
+        padding: 10px;
+    }
+
+    .modal-footer button:hover {
+        transform: scale(1.1);
+    }
+
+    .modal-footer img {
+        width: 40px;
+        height: 40px;
+    }
+
+.modal-footer .btn-edit {
+    color: #4CAF50;
+}
+
+.modal-footer .btn-delete {
+    color: #f44336;
+}
+
+.modal-filtros {
+    display: flex;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(255, 204, 229, 0.9);
+    justify-content: center;
+    align-items: center;
+}
+
+.modal-filtros-content {
+    background-color: #fff;
+    margin: 20px;
+    padding: 30px;
+    border: none;
+    border-radius: 10px;
+    width: 90%;
+    max-width: 400px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.modal-filtros-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 2px solid #e91e63;
+    padding-bottom: 10px;
+}
+
+.modal-filtros-header h2 {
+    color: #e91e63;
+    margin: 0;
+}
+
+.modal-filtros-body {
+    margin-top: 20px;
+}
+
+.modal-filtros-body label {
+    font-weight: bold;
+    margin-bottom: 5px;
+    color: #e91e63;
+}
+
+.modal-filtros-body input,
+.modal-filtros-body select {
+    width: calc(100% - 20px);
+    margin: 10px 0px 20px;
+    padding: 12px;
+    border-radius: 8px;
+    border: 1px solid #e91e63;
+    background-color: #ffffff;
+    font-size: 14px;
+    color: #333;
+    transition: border-color 0.3s, background-color 0.3s;
+}
+
+.modal-filtros-body input:focus,
+.modal-filtros-body select:focus {
+    border-color: #d81b60;
+    background-color: #fff;
+}
+
+.custom-select .selected {
+    padding: 10px;
+    border: 1px solid #e91e63;
+    border-radius: 8px;
+    background-color: #ffffff;
+    cursor: pointer;
+}
+
+.option img {
+    width: 20px;
+    height: 20px;
+    margin-right: 8px;
+}
+
+
+.custom-select {
+    display: flex;
+    margin: 8px 0;
+}
+
+.selected {
+    padding: 10px;
+    border: 1px solid #e91e63;
+    border-radius: 8px;
+    background-color: #ffffff;
+    cursor: pointer;
+    flex: 1;
+}
+
+.options {
+    position: absolute;
+    background: white;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    z-index: 1;
+    width: 200px;
+    max-height: 200px;
+    overflow-y: auto;
+    display: none;
+    margin-left: 300px;
+}
+
+.option {
+    padding: 10px;
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.option:hover {
+    background: #f0f0f0;
+}
+
+.modal-filtros-footer {
+    display: flex;
+    justify-content: center;
+    margin-top: 20px;
+}
+
+.btn-aplicar {
+    background-color: #e91e63;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    padding: 12px 15px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.3s, transform 0.2s;
+}
+
+.btn-aplicar:hover {
+    background-color: #d81b60;
+    transform: scale(1.05);
+}
+
+.notification-bar {
+    position: absolute;
+    top: 90px;
+    margin-left: 950px;
+    background-color: #ffe0e0;
+    border: 1px solid #f8b3b3;
+    border-radius: 8px;
+    padding: 15px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    display: none;
+    z-index: 1000;
+    width: 300px;
+    font-size: 14px;
+}
+
+.notification-bar h4 {
+    color: #d80048;
+    margin: 0 0 10px;
+    font-size: 18px;
+    text-align: center;
+}
+
+.notification-bar ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.notification-bar li {
+    background-color: #ffd1d1;
+    border: 1px solid #f0a3a3;
+    border-radius: 5px;
+    padding: 10px;
+    margin-bottom: 5px;
+    transition: background-color 0.3s;
+}
+
+.notification-bar li:hover {
+    background-color: #ffb3b3;
+}
+
+.notification-bar button {
+    background-color: #d80048;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    padding: 5px 10px;
+    cursor: pointer;
+    font-size: 12px;
+    margin-top: 10px;
+    display: block;
+    width: 100%;
+}
+
+.notification-bar button:hover {
+    background-color: #b0002d;
+}
+
+.modal-edit {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(255, 204, 229, 0.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+#form-modal {
+    background: white;
+    padding: 30px;
+    border-radius: 15px;
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+    width: 350px;
+    text-align: center;
+}
+
+#edit-form input {
+    width: calc(100% - 20px);
+    margin: 15px 0;
+    padding: 12px;
+    border-radius: 8px;
+    border: 1px solid #e91e63;
+    background-color: #ffffff;
+    font-size: 16px;
+    color: #fd4b87;
+}
+
+#edit-form label {
+    color: #e91e63;
+    font-weight: bold;
+}
+
+.button-container {
+    display: flex;
+    justify-content: center;
+    border: none;
+}
+
+.button-container button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 10px;
+    transition: transform 0.2s;
+}
+
+.button-container button:hover {
+    transform: scale(1.1);
+}
+
+</style>
+
+<script>
+    let mesAtual = new Date();
+    let currentTransactionId;
+    let transacaoTipo;
+
+    function atualizarMes() {
+        const mesNome = mesAtual.toLocaleString('pt-BR', { month: 'long' });
+        const ano = mesAtual.getFullYear();
+        document.getElementById('mes-atual').innerText = `${mesNome.charAt(0).toUpperCase() + mesNome.slice(1)} ${ano}`;
+        carregarTransacoes();
+    }
+
+    function prevMonth() {
+        mesAtual.setMonth(mesAtual.getMonth() - 1);
+        atualizarMes();
+    }
+
+    function nextMonth() {
+        mesAtual.setMonth(mesAtual.getMonth() + 1);
+        atualizarMes();
+    }
+
+    function formatarMoeda(valor) {
+        return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    }
+
+    function formatarData(dataString) {
+        if (!dataString) return 'Data não informada';
+        
+        try {
+            const data = new Date(dataString + 'T00:00:00');
+            const dia = String(data.getDate()).padStart(2, '0');
+            const mes = String(data.getMonth() + 1).padStart(2, '0');
+            const ano = data.getFullYear();
+            return `${dia}/${mes}/${ano}`;
+        } catch (e) {
+            return dataString;
+        }
+    }
+
+    function formatarDataParaInput(dataString) {
+        if (!dataString) return '';
+        
+        const partes = dataString.split('/');
+        if (partes.length === 3) {
+            return `${partes[2]}-${partes[1]}-${partes[0]}T00:00:00`;
+        }
+        return dataString;
+    }
+
+    function carregarTransacoes() {
+        const mes = mesAtual.getMonth() + 1;
+        const ano = mesAtual.getFullYear();
+
+        fetch(`/transacoes?mes=${mes}&ano=${ano}`)
+            .then(response => response.json())
+            .then(data => {
+                const listaDespesas = document.getElementById('lista-despesas');
+                const listaReceitas = document.getElementById('lista-receitas');
+                const msgVazio = document.getElementById('msg-vazio');
+
+                listaDespesas.innerHTML = '';
+                listaReceitas.innerHTML = '';
+
+                if (data.despesas && data.despesas.length > 0) {
+                    data.despesas.forEach(d => {
+                        listaDespesas.innerHTML += `
+                            <div class="transacao" onclick="openModal(${d.id}, 'despesa')">
+                                <img src="/static/${d.categoria_imagem}">
+                                <span class="descricao">${d.descricao}</span>
+                                <span class="valor despesa">${formatarMoeda(parseFloat(d.valor))}</span>
+                            </div>
+                        `;
+                    });
+                }
+
+                if (data.receitas && data.receitas.length > 0) {
+                    data.receitas.forEach(r => {
+                        listaReceitas.innerHTML += `
+                            <div class="transacao" onclick="openModal(${r.id}, 'receita')">
+                                <img src="/static/${r.categoria_imagem}">
+                                <span class="descricao">${r.descricao}</span>
+                                <span class="valor receita">${formatarMoeda(parseFloat(r.valor))}</span>
+                            </div>
+                        `;
+                    });
+                }
+
+                msgVazio.style.display = (data.despesas.length === 0 && data.receitas.length === 0) ? 'block' : 'none';
+            })
+            .catch(error => {
+                console.error('Erro ao carregar transações:', error);
+                showFlashMessage('Erro ao carregar transações', 'error');
+            });
+    }
+
+    function openModal(id, tipo) {
+        currentTransactionId = id;
+        transacaoTipo = tipo;
+        
+        closeAllModals();
+
+        fetch(`/transacao/${id}?tipo=${tipo}`)
+            .then(response => {
+                if (!response.ok) throw new Error('Erro ao carregar transação');
+                return response.json();
+            })
+            .then(data => {
+                if (!data) throw new Error('Dados não recebidos');
+
+                document.getElementById('modal-categoria-imagem').src = `/static/${data.categoria_imagem || 'outros.png'}`;
+                document.getElementById('modal-descricao').textContent = data.descricao || 'Sem descrição';
+                document.getElementById('modal-valor').textContent = formatarMoeda(parseFloat(data.valor || 0));
+                document.getElementById('modal-categoria').textContent = data.categoria || 'Sem categoria';
+                
+                const dataExibicao = data.data ? formatarData(data.data) : 'Data não informada';
+                document.getElementById('modal-data').textContent = dataExibicao;
+
+                const prazoContainer = document.getElementById('modal-prazo-container');
+                if (tipo === 'despesa') {
+                    prazoContainer.style.display = 'block';
+                    const prazoExibicao = data.prazo ? formatarData(data.prazo) : 'Prazo não informado';
+                    document.getElementById('modal-prazo').textContent = prazoExibicao;
+                } else {
+                    prazoContainer.style.display = 'none';
+                }
+
+                document.getElementById('modal').style.display = 'flex';
+            })
+            .catch(error => {
+                console.error('Erro:', error);
+                showFlashMessage('Erro ao carregar transação: ' + error.message, 'error');
+            });
+    }
+
+    function closeModal() {
+        document.getElementById('modal').style.display = 'none';
+    }
+
+    function openEditModal() {
+        if (!currentTransactionId || !transacaoTipo) return;
+
+        closeAllModals();
+
+        fetch(`/transacao/${currentTransactionId}?tipo=${transacaoTipo}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    console.error(data.error);
+                    return;
+                }
+
+                document.getElementById('edit-descricao').value = data.descricao || '';
+                document.getElementById('edit-valor').value = data.valor || '';
+                document.getElementById('edit-categoria').value = data.categoria || '';
+                document.querySelector('.modal-edit .selected').innerText = data.categoria || 'Selecionar categoria...';
+
+                let dataFormatada = '';
+                if (data.data) {
+                    const dataObj = new Date(data.data);
+                    if (!isNaN(dataObj.getTime())) {
+                        const year = dataObj.getFullYear();
+                        const month = String(dataObj.getMonth() + 1).padStart(2, '0');
+                        const day = String(dataObj.getDate()).padStart(2, '0');
+                        dataFormatada = `${year}-${month}-${day}`;
+                    }
+                }
+                document.getElementById('edit-data').value = dataFormatada;
+
+                const prazoLabel = document.getElementById('edit-prazo-label');
+                const prazoInput = document.getElementById('edit-prazo');
+                
+                if (transacaoTipo === 'despesa' && data.prazo) {
+                    prazoLabel.style.display = 'block';
+                    prazoInput.style.display = 'block';
+                    
+                    const prazoObj = new Date(data.prazo);
+                    if (!isNaN(prazoObj.getTime())) {
+                        const year = prazoObj.getFullYear();
+                        const month = String(prazoObj.getMonth() + 1).padStart(2, '0');
+                        const day = String(prazoObj.getDate()).padStart(2, '0');
+                        prazoInput.value = `${year}-${month}-${day}`;
+                    }
+                } else {
+                    prazoLabel.style.display = 'none';
+                    prazoInput.style.display = 'none';
+                }
+
+                document.getElementById('modal-edit').style.display = 'flex';
+            })
+            .catch(error => {
+                console.error('Erro ao carregar dados da transação:', error);
+                showFlashMessage('Erro ao carregar dados para edição', 'error');
+            });
+    }
+
+    function closeEditModal() {
+        document.getElementById('modal-edit').style.display = 'none';
+    }
+
+    function openFilterModal() {
+        closeAllModals();
+        
+        document.querySelector('#modal-filtros #filtro-categoria').value = '';
+        document.querySelector('#modal-filtros .selected').innerText = 'Selecionar categoria...';
+        document.querySelector('#modal-filtros .selected').setAttribute('data-value', '');
+        document.getElementById('tipo').value = '';
+        document.getElementById('data').value = '';
+        document.getElementById('prazo').value = '';
+
+        document.getElementById('modal-filtros').style.display = 'flex';
+    }
+
+    function closeFilterModal() {
+        document.getElementById('modal-filtros').style.display = 'none';
+    }
+
+    function closeAllModals() {
+        closeModal();
+        closeEditModal();
+        closeFilterModal();
+    }
+
+    function toggleConfiguracoes() {
+        window.location.href = "{{ url_for('configuracoes') }}";
+    }
+
+    function deleteTransaction(tipo) {
+        if (confirm("Você tem certeza que deseja excluir esta transação?")) {
+            fetch(`/transacao/${currentTransactionId}?tipo=${tipo}`, {
+                method: 'DELETE',
+            })
+            .then(response => {
+                if (response.ok) {
+                    closeModal();
+                    carregarTransacoes();
+                    showFlashMessage('Transação excluída com sucesso!', 'success');
+                } else {
+                    return response.json().then(errorData => {
+                        alert(errorData.error || 'Erro ao excluir a transação.');
+                    });
+                }
+            })
+            .catch(error => console.error('Erro ao excluir a transação:', error));
+        }
+    }
+
+    function saveEditTransaction() {
+        const descricao = document.getElementById('edit-descricao').value.trim();
+        const valor = parseFloat(document.getElementById('edit-valor').value);
+        const dataInput = document.getElementById('edit-data').value;
+        const categoria = document.getElementById('edit-categoria').value;
+
+        if (!descricao && isNaN(valor) && !dataInput && !categoria) {
+            showFlashMessage('Por favor, preencha ao menos um campo antes de confirmar.', 'error');
+            return;
+        }
+
+        if (!descricao || isNaN(valor) || !dataInput || !categoria) {
+            showFlashMessage('Por favor, preencha todos os campos obrigatórios corretamente');
+            return;
+        }
+
+        const dados = {
+            descricao: descricao,
+            valor: valor,
+            data: dataInput,
+            categoria: categoria
+        };
+
+        if (transacaoTipo === 'despesa') {
+            const prazoInput = document.getElementById('edit-prazo').value;
+            if (!prazoInput) {
+                showFlashMessage('Por favor, informe o prazo de pagamento para despesas');
+                return;
+            }
+            dados.prazo = prazoInput;
+        }
+
+        fetch(`/transacao/${currentTransactionId}?tipo=${transacaoTipo}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(dados)
+        })
+        .then(response => {
+            if (!response.ok) {
+                return response.json().then(err => { 
+                    throw new Error(err.error || 'Erro ao atualizar transação'); 
+                });
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data && data.success) {
+                showFlashMessage('Transação atualizada com sucesso!', 'success');
+                closeEditModal();
+                carregarTransacoes();
+            } else {
+                throw new Error(data.error || 'Resposta inválida do servidor');
+            }
+        })
+        .catch(error => {
+            console.error('Erro na atualização:', error);
+            showFlashMessage(error.message || 'Erro ao atualizar transação');
+        });
+    }
+
+    function showFlashMessage(message) {
+        const flashContainer = document.getElementById('flash-messages');
+        flashContainer.innerHTML = `<div><p>${message}</p></div>`;
+        flashContainer.style.display = 'block';
+        
+        setTimeout(() => {
+            flashContainer.style.display = 'none';
+        }, 5000);
+    }
+
+    function aplicarFiltros() {
+        const categoria = document.querySelector('#modal-filtros #filtro-categoria').value;
+        const tipo = document.getElementById('tipo').value;
+        const data = document.getElementById('data').value;
+        const prazo = document.getElementById('prazo').value;
+
+        const mes = mesAtual.getMonth() + 1;
+        const ano = mesAtual.getFullYear();
+
+        let url = `/transacoes?mes=${mes}&ano=${ano}`;
+        
+        if (categoria) url += `&categoria=${encodeURIComponent(categoria)}`;
+        if (tipo) url += `&tipo=${tipo}`;
+        if (data) url += `&data=${data}`;
+        if (prazo) url += `&prazo=${prazo}`;
+
+        fetch(url)
+            .then(response => {
+                if (!response.ok) throw new Error('Erro ao carregar transações');
+                return response.json();
+            })
+            .then(data => {
+                const listaDespesas = document.getElementById('lista-despesas');
+                const listaReceitas = document.getElementById('lista-receitas');
+                const msgVazio = document.getElementById('msg-vazio');
+
+                listaDespesas.innerHTML = '';
+                listaReceitas.innerHTML = '';
+
+                let hasResults = false;
+
+                if (data.despesas && data.despesas.length > 0) {
+                    data.despesas.forEach(d => {
+                        if (!prazo || (new Date(d.prazo) >= new Date(prazo))) {
+                            listaDespesas.innerHTML += `
+                                <div class="transacao" onclick="openModal(${d.id}, 'despesa')">
+                                    <img src="/static/${d.categoria_imagem}">
+                                    <span class="descricao">${d.descricao}</span>
+                                    <span class="valor despesa">${formatarMoeda(parseFloat(d.valor))}</span>
+                                </div>
+                            `;
+                            hasResults = true;
+                        }
+                    });
+                }
+
+                if (data.receitas && data.receitas.length > 0 && !prazo) {
+                    data.receitas.forEach(r => {
+                        listaReceitas.innerHTML += `
+                            <div class="transacao" onclick="openModal(${r.id}, 'receita')">
+                                <img src="/static/${r.categoria_imagem}">
+                                <span class="descricao">${r.descricao}</span>
+                                <span class="valor receita">${formatarMoeda(parseFloat(r.valor))}</span>
+                            </div>
+                        `;
+                        hasResults = true;
+                    });
+                }
+
+                msgVazio.style.display = hasResults ? 'none' : 'block';
+
+                closeFilterModal();
+            })
+            .catch(error => {
+                console.error('Erro ao aplicar filtros:', error);
+                alert('Ocorreu um erro ao aplicar os filtros: ' + error.message);
+            });
+    }
+        function toggleNotificationBar() {
+            const notificationBar = document.getElementById("notification-bar");
+            notificationBar.style.display = notificationBar.style.display === "none" ? "block" : "none";
+            if (notificationBar.style.display === "block") {
+                fetchNotifications();
+            }
+        }
+
+        function fetchNotifications() {
+            fetch('/notificacoes')
+                .then(response => response.json())
+                .then(data => {
+                    const notificationList = document.getElementById('notification-list');
+                    notificationList.innerHTML = '';
+
+                    if (data.despesas && data.despesas.length > 0) {
+                        data.despesas.forEach(despesa => {
+                            const li = document.createElement('li');
+                            li.innerText = `A despesa "${despesa.descricao}" vence em ${new Date(despesa.prazo).toLocaleDateString()}.`;
+                            notificationList.appendChild(li);
+                        });
+                    }
+
+                    if (data.metas_atingidas && data.metas_atingidas.length > 0) {
+                        data.metas_atingidas.forEach(meta => {
+                            const li = document.createElement('li');
+                            li.className = 'meta-atingida';
+                            li.innerText = `Parabéns! Você atingiu a meta do cofrinho "${meta.nome}"!`;
+                            notificationList.appendChild(li);
+                        });
+                    }
+
+                    if (notificationList.children.length === 0) {
+                        notificationList.innerHTML = '<li>Nenhuma notificação no momento.</li>';
+                    }
+                })
+                .catch(error => console.error('Erro ao buscar notificações:', error));
+        }
+
+        function clearNotifications() {
+            fetch('/limpar_notificacoes', {
+                method: 'POST'
+            })
+            .then(response => {
+                if (response.ok) {
+                    const notificationList = document.getElementById('notification-list');
+                    notificationList.innerHTML = '<li>Nenhuma notificação no momento.</li>';
+                } else {
+                    alert("Erro ao limpar notificações.");
+                }
+            })
+            .catch(error => console.error('Erro ao limpar notificações:', error));
+        }
+
+
+    function toggleOptions(type) {
+        const options = type === 'edit' ? document.getElementById('edit-options') : document.getElementById('filter-options');
+        options.style.display = options.style.display === 'block' ? 'none' : 'block';
+    }
+
+    function selectCategory(type, categoryName) {
+        const selected = type === 'edit' ? document.querySelector('.modal-edit .selected') : document.querySelector('#modal-filtros .custom-select .selected');
+        
+        selected.innerText = categoryName;
+        selected.setAttribute('data-value', categoryName);
+
+        if (type === 'edit') {
+            document.getElementById('edit-categoria').value = categoryName;
+        } else {
+            document.getElementById('filtro-categoria').value = categoryName;
+        }
+
+        toggleOptions(type);
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        atualizarMes();
+        
+        document.getElementById('edit-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            saveEditTransaction();
+        });
+
+        document.addEventListener('click', function(event) {
+            if (event.target === document.getElementById('modal')) {
+                closeModal();
+            }
+            if (event.target === document.getElementById('modal-edit')) {
+                closeEditModal();
+            }
+            if (event.target === document.getElementById('modal-filtros')) {
+                closeFilterModal();
+            }
+        });
+    });
+
+    function clearFilters() {
+        document.querySelector('#modal-filtros #filtro-categoria').value = '';
+        document.querySelector('#modal-filtros .selected').innerText = 'Selecionar categoria...';
+        document.querySelector('#modal-filtros .selected').setAttribute('data-value', '');
+        document.getElementById('tipo').value = '';
+        document.getElementById('data').value = '';
+        document.getElementById('prazo').value = '';
+
+        carregarTransacoes();
+    }
+</script>
+{% endblock %}

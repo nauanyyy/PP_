@@ -1,0 +1,1133 @@
+{% extends "base.html" %}
+
+{% block title %}Metas{% endblock %}
+
+{% block content %}
+<section class="user-metas">
+    <header class="navbar">
+        <div class="logo">
+            <img src="{{ url_for('static', filename='ECONIZZE.png') }}" class="logo-img" alt="Logomarca">
+        </div>
+        <nav class="nav-links">
+            <a href="{{ url_for('usuario') }}" class="dashboard-btn">Visão Geral</a>
+            <a href="{{ url_for('historico') }}" class="dashboard-btn active">Histórico</a>
+            <a href="{{ url_for('relatorios') }}" class="dashboard-btn">Relatórios</a>
+            <a href="{{ url_for('metas') }}" class="dashboard-btn">Metas</a>
+        </nav>
+        <div class="user-actions" style="margin-right: 20px;">
+            <button class="btn-imagem" style="background: none; border: none; padding: 0; cursor: pointer;" onclick="toggleNotificationBar()">
+                <img src="{{ url_for('static', filename='sininho.png') }}" alt="Notificações" style="display: block; width: 25px; height: 25px;">
+            </button>
+            <span style="margin: 0 15px;"></span>
+            <button class="btn-imagem" style="background: none; border: none; padding: 0; cursor: pointer;" onclick="toggleConfiguracoes()">
+                <img src="{{ url_for('static', filename='home.png') }}" alt="Configurações" style="display: block; width: 25px; height: 25px;">
+            </button>
+        </div>
+    </header>
+
+    <div id="notification-bar" class="notification-bar" style="display: none;">
+        <h4 style="display: flex; justify-content: space-between; align-items: center;">
+            Alertas
+            <span onclick="toggleNotificationBar()" style="cursor: pointer; font-size: 18px; color: #d80048;">
+                &times;
+            </span>
+        </h4>
+        <ul id="notification-list"></ul>
+        <button onclick="clearNotifications()" style="margin-top: 5px; background-color: #d80048; color: white; border: none; border-radius: 5px; padding: 5px 10px;">
+            Limpar Notificações
+        </button>
+    </div>
+
+    <div id="flash-messages" style="text-align: center; position: fixed; width: 100%; display: none; top: 90px; left: 0; z-index: 1000; margin: 0 auto; padding: 10px; max-width: 400px; border: 1px solid #ff80ab; background-color: #ffc1e3; color: #d81b60; border-radius: 20px; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); margin-left: 35%;">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div>
+                        <p>{{ message }}</p>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+    </div>
+
+    <div class="metas-container" style="display: flex; justify-content: space-between; margin-top: 20px;">
+        <div class="card economias-card" style="margin-right: 20px; width: 70%;">
+            <h2 style="color: #d80048; margin-bottom: 20px;">Economias</h2>
+            <div class="content" style="display: flex; align-items: center; justify-content: center;">
+                <img src="{{ url_for('static', filename='cofrinho.png') }}" alt="Cofrinho" style="width: 60px; height: 60px; vertical-align: middle; margin-right: 10px;">
+                <button class="btn-criar-cofrinho" style="margin-left: 10px; background-color: #fdbdd2; color: #d80048; border: none; border-radius: 8px; padding: 8px 8px; cursor: pointer; box-shadow: 0 2px 5px #f35c8e;" onclick="showCofreModal()">
+                    <b>Criar Cofrinho</b>
+                </button>
+            </div>
+
+            <div class="cofres-container" style="margin-top: 20px; position: relative; overflow: hidden;">
+                {% if cofres | length > 5 %}
+                    <button onclick="prevCofres()" style="position: absolute; left: 10px; top: 45%; transform: translateY(-50%); background: none; border: none; z-index: 10; margin-right: 10px;">
+                        <img src="{{ url_for('static', filename='setaesquerda.png') }}" alt="Seta Esquerda" style="width: 20px; height: 20px;">
+                    </button>
+                {% endif %}
+                
+                <div class="cofres-carousel" style="display: flex; flex-direction: column; transition: transform 0.3s; padding: 0 40px 50px 40px;">
+                    {% for cofre in cofres %}
+                    <div class="cofre-card" style="margin: 5px 0; width: 330px;">
+                        <div style="display: flex; align-items: center;">
+                            <img src="{{ url_for('static', filename='moeda_cofrinho.png') }}" alt="Cofrinho" style="width: 40px; height: 40px; margin-right: 10px;">
+                            <div>
+                                <h4>{{ cofre.nome }}</h4>
+                                <p>Meta: <span class="moeda" data-value="{{ cofre.limite }}">{{ cofre.limite }}</span></p>
+                                <p>Juntado: <span class="moeda" data-value="{{ cofre.valor_juntado }}">{{ cofre.valor_juntado }}</span></p>
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 10px;">
+                            <button class="btn-editar" onclick="editCofre({{ cofre.id }}, '{{ cofre.nome }}', {{ cofre.limite }})">
+                                <img src="{{ url_for('static', filename='editar.png') }}" alt="Editar" style="width: 34px; height: 34px;">
+                            </button>
+                            <button class="btn-excluir" onclick="deleteCofre({{ cofre.id }})">
+                                <img src="{{ url_for('static', filename='excluir.png') }}" alt="Excluir" style="width: 35px; height: 35px;">
+                            </button>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            
+                {% if cofres | length > 5 %}
+                    <button onclick="nextCofres()" style="position: absolute; right: 10px; top: 45%; transform: translateY(-50%); background: none; border: none; z-index: 10; margin-left: 10px;">
+                        <img src="{{ url_for('static', filename='setadireita.png') }}" alt="Seta Direita" style="width: 20px; height: 20px;">
+                    </button>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="card" style="width: 45%; height: 350px;">
+            <h2 style="color: #d80048; margin-bottom: 30px;">Limite de Gastos Mensal</h2>
+            <div class="content">
+                <div class="navegacao-meses" style="margin-bottom: 30px;">
+                    <button class="seta" onclick="prevMonth()">
+                        <img src="{{ url_for('static', filename='setaesquerda.png') }}" alt="Seta Esquerda" class="seta-img">
+                    </button>
+                    <span id="mes-atual"></span>
+                    <button class="seta" onclick="nextMonth()">
+                        <img src="{{ url_for('static', filename='setadireita.png') }}" alt="Seta Direita" class="seta-img">
+                    </button>
+                </div>
+        
+                <div style="margin-bottom: 5px; font-weight: bold; color: #fd2e73;">Limite Total:</div>
+                <input type="text" id="limite-total-input" class="input-limite" 
+                placeholder="Digite o valor" 
+                style="width: 90%; margin-left: 15px; margin-bottom: 15px; padding: 10px; 
+                       background-color: #ffe0e0; border-radius: 5px; color: #ff075a; 
+                       border: 1px solid #fd2e73; font-weight: bold;"
+                onfocus="inputMoedaFocado(this)"
+                onblur="inputMoedaDesfocado(this)">
+        
+                <hr style="border: 1px solid rgba(255, 105, 180, 0.4); margin: 15px 0;">
+        
+                <button onclick="salvarLimiteTotal()" style="margin-top: 15px; background-color: #d80048; color: white; border: none; border-radius: 5px; padding: 8px 12px;">
+                    Salvar Limite
+                </button>
+            </div>
+        </div>
+    </div>
+    <div id="cofre-modal" class="form-container" style="display: none;">
+        <div id="form-modal" style="background-color: #fdacc7; padding: 30px; border-radius: 15px;">
+            <h3 style="padding-bottom: 10px; color: #d80048;">Criar Cofrinho</h3>
+            <form method="POST" action="{{ url_for('criar_cofre') }}">
+                <label id="label-cofre">Nome da sua meta:</label>
+                <input type="text" name="nome_meta" required id="input-cofre">
+                <label id="label-cofre">Qual valor desejado?</label>
+                <input type="number" name="valor_desejado" required id="input-cofre">
+                <label id="label-cofre">Quanto você já juntou?</label>
+                <input type="number" name="valor_juntado" required id="input-cofre">
+                <div class="button-container" style="display: flex; justify-content: center; margin-top: 20px;">
+                    <button type="button" onclick="document.getElementById('cofre-modal').style.display='none'" class="btn-imagem" title="Cancelar" style="background: none; border: none; cursor: pointer;">
+                        <img src="{{ url_for('static', filename='cancelar.png') }}" alt="Cancelar" style="width: 50px; height: 45px;">
+                    </button>
+                    <button type="submit" class="btn-imagem" title="Confirmar" style="margin-left: 20px; background: none; border: none; cursor: pointer;">
+                        <img src="{{ url_for('static', filename='confirmar.png') }}" alt="Confirmar" style="width: 50px; height: 45px;">
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <div id="edit-cofre-modal" class="form-container" style="display: none;">
+        <div id="edit-form-modal" style="background-color: #fdacc7; padding: 30px; border-radius: 15px; width: 350px; text-align: center;">
+            <h3 style="padding-bottom: 10px; color: #d80048;">Editar Cofrinho</h3>
+            <form id="edit-cofre-form" method="POST" action="{{ url_for('editar_cofre') }}">
+                <input type="hidden" name="cofre_id" id="edit-cofre-id">
+                
+                <label id="label-cofre">Nome do Cofrinho:</label>
+                <input type="text" name="nome_meta" required id="edit-nome-meta" class="input-cofre">
+                
+                <label id="label-cofre">Valor desejado:</label>
+                <input type="number" name="valor_desejado" required id="edit-valor-desejado" class="input-cofre">
+                
+                <div style="margin-top: 20px;">
+                    <button type="button" onclick="showAddValueField()" style="background-color: #d80048; color: white; border: none; border-radius: 5px; padding: 8px 12px; margin-right: 10px;">
+                        Adicionar valor
+                    </button>
+                    <button type="button" onclick="showRemoveValueField()" style="background-color: #d80048; color: white; border: none; border-radius: 5px; padding: 8px 12px;">
+                        Retirar valor
+                    </button>
+                </div>
+                
+                <div id="add-value-field" style="margin-top: 15px; display: none;">
+                    <label id="label-cofre">Valor a adicionar:</label>
+                    <input type="number" name="valor_adicionar" id="valor-adicionar" class="input-cofre">
+                    <button type="button" onclick="addValue()" style="background-color: #4CAF50; color: white; border: none; border-radius: 5px; padding: 8px 12px; margin-top: 10px;">
+                        Confirmar Adição
+                    </button>
+                </div>
+                
+                <div id="remove-value-field" style="margin-top: 15px; display: none;">
+                    <label id="label-cofre">Valor a retirar:</label>
+                    <input type="number" name="valor_retirar" id="valor-retirar" class="input-cofre">
+                    <button type="button" onclick="removeValue()" style="background-color: #f44336; color: white; border: none; border-radius: 5px; padding: 8px 12px; margin-top: 10px;">
+                        Confirmar Retirada
+                    </button>
+                </div>
+                
+                <div class="button-container" style="display: flex; justify-content: center; margin-top: 20px;">
+                    <button type="button" onclick="closeEditCofreModal()" class="btn-imagem" title="Cancelar" style="background: none; border: none; cursor: pointer;">
+                        <img src="{{ url_for('static', filename='cancelar.png') }}" alt="Cancelar" style="width: 50px; height: 45px;">
+                    </button>
+                    <button type="submit" class="btn-imagem" title="Salvar" style="margin-left: 20px; background: none; border: none; cursor: pointer;">
+                        <img src="{{ url_for('static', filename='confirmar.png') }}" alt="Salvar" style="width: 50px; height: 45px;">
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    </div>
+    
+    <style>
+        body {
+            font-family: 'Trebuchet MS', 'Lucida Sans Unicode', 'Lucida Grande', 'Lucida Sans', Arial, sans-serif;
+            background-color: #ff6a9c;
+            margin: 0;
+            padding: 0;
+        }
+
+        .user-metas {
+            max-width: 800px;
+            margin: 0 auto;
+            margin-top: 150px;
+        }
+
+        .metas-container {
+            display: flex;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
+        .card {
+            background-color: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            width: 450px;
+            min-width: 450px;
+            margin: 0 20px;
+        }
+
+        .content {
+            margin-top: 10px;
+        }
+
+        .input-limite {
+            width: 80%;
+            margin-top: 10px;
+            margin-bottom: 15px;
+            margin-left: 15px;
+            padding: 10px;
+            border: 1px solid #fd2e73;
+            border-radius: 5px;
+            background-color: #ffe0e0;
+            color: #ff86ae;
+        }
+
+        .input-limite::placeholder {
+            color: #fd2e73;
+        }
+
+        .navegacao-meses {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 20px 0;
+            font-weight: bold;
+            color: #d80048;
+        }
+
+        .navegacao-meses .seta {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 0 10px;
+        }
+
+        .seta-img {
+            width: 20px;
+            height: 20px;
+        }
+
+        .notification-bar {
+            position: absolute;
+            top: 90px;
+            margin-left: 950px;
+            background-color: #ffe0e0;
+            border: 1px solid #f8b3b3;
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+            display: none;
+            z-index: 1000;
+            width: 300px;
+            font-size: 14px;
+        }
+
+        .notification-bar h4 {
+            color: #d80048;
+            margin: 0 0 10px;
+            font-size: 18px;
+            text-align: center;
+        }
+
+        .notification-bar ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .notification-bar li {
+            background-color: #ffd1d1;
+            border: 1px solid #f0a3a3;
+            border-radius: 5px;
+            padding: 10px;
+            margin-bottom: 5px;
+            transition: background-color 0.3s;
+        }
+
+        .notification-bar li:hover {
+            background-color: #ffb3b3;
+        }
+
+        .notification-bar button {
+            background-color: #d80048;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            padding: 5px 10px;
+            cursor: pointer;
+            font-size: 12px;
+            margin-top: 10px; 
+            display: block;
+            width: 100%;
+        }
+
+        .notification-bar button:hover {
+            background-color: #b0002d;
+        }
+
+        .form-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(255, 204, 229, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        #form-modal {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+            width: 350px;
+            text-align: center;
+        }
+
+        #input-cofre {
+            width: calc(100% - 20px);
+            margin: 15px 0;
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid #e91e63;
+            background-color: #ffffff;
+            font-size: 16px;
+            color: #fd4b87;
+        }
+
+        #label-cofre {
+            color: #e91e63;
+            font-weight: bold;
+        }
+
+        .cofre-card {
+            background-color: #fdacc7;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 15px;
+            margin-left: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 2px 5px #d80048;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            width: 350px;
+        }
+
+        .cofre-card h4 {
+            margin: 0;
+            font-size: 1em;
+            color: #d80048;
+        }
+
+        .cofre-card p {
+            margin: 0;
+            color: #555;
+            font-size: 0.9em;
+        }
+
+        .btn-editar, .btn-excluir {
+            background: none; 
+            border: none; 
+            cursor: pointer; 
+            transition: transform 0.2s ease;
+        }
+
+        .btn-editar:hover, .btn-excluir:hover {
+            transform: scale(1.1);
+        }
+
+        .flash-message {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000;
+            padding: 10px 20px;
+            border-radius: 5px;
+            color: white;
+            font-weight: bold;
+            animation: fadeIn 0.3s, fadeOut 0.3s 2.7s;
+        }
+
+        .flash-message.success {
+            background-color: #4CAF50;
+        }
+
+        .flash-message.error {
+            background-color: #f44336;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes fadeOut {
+            from { opacity: 1; }
+            to { opacity: 0; }
+        }
+
+        .input-cofre {
+            width: calc(100% - 20px);
+            margin: 15px 0;
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid #e91e63;
+            background-color: #ffffff;
+            font-size: 16px;
+            color: #fd4b87;
+        }
+
+        #label-cofre {
+            color: #e91e63;
+            font-weight: bold;
+            display: block;
+            text-align: left;
+            margin-left: 10px;
+        }
+
+        .form-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(255, 204, 229, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        #form-modal, #edit-form-modal {
+            background-color: #fdacc7;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+            width: 350px;
+            text-align: center;
+        }
+    </style>
+
+    <script>
+        let mesAtual = new Date();
+        let indexCofres = 0;
+        const cofresPorPagina = 5;
+        const totalCofres = {{ cofres | length }};
+
+        function prevCofres() {
+            if (indexCofres > 0) {
+                indexCofres--;
+                updateCofresCarousel();
+            }
+        }
+
+        function nextCofres() {
+            if (indexCofres < Math.ceil(totalCofres / cofresPorPagina) - 1) {
+                indexCofres++;
+                updateCofresCarousel();
+            }
+        }
+
+        function updateCofresCarousel() {
+            const cofreCards = document.querySelectorAll('.cofre-card');
+            cofreCards.forEach((card, index) => {
+                if (index >= indexCofres * cofresPorPagina && index < (indexCofres + 1) * cofresPorPagina) {
+                    card.style.display = 'flex';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            updateCofresCarousel();
+            formatCurrency();
+        });
+
+        function formatCurrency() {
+            const moedaElements = document.querySelectorAll('.moeda');
+            moedaElements.forEach(element => {
+                const value = parseFloat(element.getAttribute('data-value'));
+                if (!isNaN(value)) {
+                    element.textContent = `R$ ${value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                }
+            });
+        }
+
+        function atualizarMes() {
+            const mesNome = mesAtual.toLocaleString('pt-BR', { month: 'long' });
+            const ano = mesAtual.getFullYear();
+            document.getElementById('mes-atual').innerText = `${mesNome.charAt(0).toUpperCase() + mesNome.slice(1)} ${ano}`;
+            
+            carregarLimiteTotal();
+            carregarTransacoes();
+        }
+
+        function prevMonth() {
+            mesAtual.setMonth(mesAtual.getMonth() - 1);
+            atualizarMes();
+        }
+
+        function nextMonth() {
+            mesAtual.setMonth(mesAtual.getMonth() + 1);
+            atualizarMes();
+        }
+
+        function showCofreModal() {
+            document.getElementById("cofre-modal").style.display = "flex";
+        }
+
+        function closeCofreModal() {
+            document.getElementById("cofre-modal").style.display = "none";
+            document.getElementById("cofre-form").reset();
+        }
+
+        function closeEditCofreModal() {
+            document.getElementById('edit-cofre-modal').style.display = 'none';
+        }
+
+        function toggleConfiguracoes() {
+            window.location.href = "{{ url_for('configuracoes') }}";
+        }
+
+        function toggleNotificationBar() {
+            const notificationBar = document.getElementById("notification-bar");
+            notificationBar.style.display = notificationBar.style.display === "none" ? "block" : "none";
+            if (notificationBar.style.display === "block") {
+                fetchNotifications();
+            }
+        }
+
+        function fetchNotifications() {
+            fetch('/notificacoes')
+                .then(response => response.json())
+                .then(data => {
+                    const notificationList = document.getElementById('notification-list');
+                    notificationList.innerHTML = '';
+
+                    if (data.despesas && data.despesas.length > 0) {
+                        data.despesas.forEach(despesa => {
+                            const li = document.createElement('li');
+                            li.innerText = `A despesa "${despesa.descricao}" vence em ${new Date(despesa.prazo).toLocaleDateString()}.`;
+                            notificationList.appendChild(li);
+                        });
+                    }
+
+                    if (data.metas_atingidas && data.metas_atingidas.length > 0) {
+                        data.metas_atingidas.forEach(meta => {
+                            const li = document.createElement('li');
+                            li.className = 'meta-atingida';
+                            li.innerText = `Parabéns! Você atingiu a meta do cofrinho "${meta.nome}"!`;
+                            notificationList.appendChild(li);
+                        });
+                    }
+
+                    if (notificationList.children.length === 0) {
+                        notificationList.innerHTML = '<li>Nenhuma notificação no momento.</li>';
+                    }
+                })
+                .catch(error => console.error('Erro ao buscar notificações:', error));
+        }
+
+        function clearNotifications() {
+            fetch('/limpar_notificacoes', {
+                method: 'POST'
+            })
+            .then(response => {
+                if (response.ok) {
+                    const notificationList = document.getElementById('notification-list');
+                    notificationList.innerHTML = '<li>Nenhuma notificação no momento.</li>';
+                } else {
+                    alert("Erro ao limpar notificações.");
+                }
+            })
+            .catch(error => console.error('Erro ao limpar notificações:', error));
+        }
+
+        function verificarMetasAtingidas() {
+            const cofreCards = document.querySelectorAll('.cofre-card');
+            let notificacoes = [];
+            
+            cofreCards.forEach(card => {
+                const valorDesejado = parseFloat(card.querySelector('p:nth-child(2) span').getAttribute('data-value'));
+                const valorJuntado = parseFloat(card.querySelector('p:nth-child(3) span').getAttribute('data-value'));
+                const nomeCofre = card.querySelector('h4').textContent;
+                
+                if (valorJuntado >= valorDesejado) {
+                    notificacoes.push({
+                        tipo: 'meta_atingida',
+                        mensagem: `Parabéns! Você atingiu a meta do cofrinho "${nomeCofre}"!`,
+                        cofreId: card.dataset.id || ''
+                    });
+                }
+            });
+            
+            return notificacoes;
+        }
+
+        function atualizarNotificacoes() {
+            fetch('/notificacoes')
+                .then(response => response.json())
+                .then(data => {
+                    const notificationList = document.getElementById('notification-list');
+                    notificationList.innerHTML = '';
+                    
+                    const metasAtingidas = verificarMetasAtingidas();
+                    
+                    if (data.length === 0 && metasAtingidas.length === 0) {
+                        notificationList.innerHTML = '<li>Nenhuma notificação no momento.</li>';
+                    } else {
+                        data.forEach(despesa => {
+                            const li = document.createElement('li');
+                            li.innerText = `A despesa "${despesa.descricao}" vence em ${new Date(despesa.prazo).toLocaleDateString()}.`;
+                            notificationList.appendChild(li);
+                        });
+                        
+                        metasAtingidas.forEach(meta => {
+                            const li = document.createElement('li');
+                            li.innerText = meta.mensagem;
+                            li.style.color = '#4CAF50';
+                            li.style.fontWeight = 'bold';
+                            notificationList.appendChild(li);
+                        });
+                    }
+                })
+                .catch(error => console.error('Erro ao buscar notificações:', error));
+        }
+
+        setInterval(atualizarNotificacoes, 30000);
+
+        document.addEventListener('DOMContentLoaded', atualizarNotificacoes);
+
+        let categoriasData = [];
+        let currentCategoryPage = 0;
+        const categoriesPerPage = 6;
+
+        function formatarMoeda(valor) {
+            return valor.toLocaleString('pt-BR', {
+                style: 'currency',
+                currency: 'BRL',
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            });
+        }
+
+        function parseMoeda(valorString) {
+            if (!valorString) return 0;
+            return parseFloat(valorString.replace(/[^\d,]/g, '').replace(',', '.')) || 0;
+        }
+
+        async function carregarLimites() {
+            try {
+                const response = await fetch('/carregar_limites');
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    categoriasData = data.categorias;
+                    renderizarCategorias();
+                    calcularLimiteTotal();
+                } else {
+                    console.error('Erro ao carregar limites:', data.message);
+                }
+            } catch (error) {
+                console.error('Erro ao carregar limites:', error);
+            }
+        }
+
+        function renderizarCategorias() {
+            const container = document.querySelector('.categorias-container');
+            container.innerHTML = '';
+
+            const startIdx = currentCategoryPage * categoriesPerPage;
+            const endIdx = startIdx + categoriesPerPage;
+            const categoriasToShow = categoriasData.slice(startIdx, endIdx);
+
+            categoriasToShow.forEach(categoria => {
+                const categoriaEl = document.createElement('div');
+                categoriaEl.className = 'categoria';
+                categoriaEl.innerHTML = `
+                    <img src="/static/${categoria.imagem}" alt="${categoria.nome}">
+                    <div class="categoria-nome">${categoria.nome}</div>
+                    <input type="text" class="input-limite" 
+                        value="${formatarMoeda(parseFloat(categoria.valor))}"
+                        data-id="${categoria.categoria_id}"
+                        onfocus="inputMoedaFocado(this)"
+                        onblur="inputMoedaDesfocado(this)">
+                `;
+                container.appendChild(categoriaEl);
+            });
+
+            document.querySelector('.carrossel-btn.prev').style.visibility = 
+                currentCategoryPage > 0 ? 'visible' : 'hidden';
+            document.querySelector('.carrossel-btn.next').style.visibility = 
+                endIdx < categoriasData.length ? 'visible' : 'hidden';
+        }
+
+        function prevCategorias() {
+            if (currentCategoryPage > 0) {
+                currentCategoryPage--;
+                renderizarCategorias();
+            }
+        }
+
+        function nextCategorias() {
+            if ((currentCategoryPage + 1) * categoriesPerPage < categoriasData.length) {
+                currentCategoryPage++;
+                renderizarCategorias();
+            }
+        }
+
+        function parseMoeda(valorString) {
+            if (!valorString) return 0;
+            const valorNumerico = valorString.replace(/[^\d,]/g, '').replace(',', '.');
+            return parseFloat(valorNumerico) || 0;
+        }
+
+        function formatarMoeda(valor) {
+            return valor.toLocaleString('pt-BR', {
+                style: 'currency',
+                currency: 'BRL',
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            });
+        }
+
+        function inputMoedaFocado(input) {
+            const valor = parseMoeda(input.value);
+            input.value = valor === 0 ? '' : valor.toFixed(2).replace('.', ',');
+        }
+
+        function inputMoedaDesfocado(input) {
+            const valor = parseMoeda(input.value);
+            input.value = valor === 0 ? '' : formatarMoeda(valor);
+        }
+
+        async function salvarLimiteTotal() {
+            try {
+                const mes = mesAtual.getMonth() + 1;
+                const ano = mesAtual.getFullYear();
+                const inputElement = document.getElementById('limite-total-input');
+                const limiteTotal = parseMoeda(inputElement.value);
+                
+                if (isNaN(limiteTotal) || limiteTotal < 0) {
+                    showFlashMessage('Por favor, insira um valor válido', 'error');
+                    return;
+                }
+
+                const response = await fetch('/salvar_limite_total', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        mes: mes,
+                        ano: ano,
+                        limite_total: limiteTotal
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    showFlashMessage('Limite salvo com sucesso!', 'success');
+                    inputElement.value = formatarMoeda(limiteTotal);
+                } else {
+                    throw new Error(data.message || 'Erro ao salvar limite total');
+                }
+            } catch (error) {
+                console.error('Erro ao salvar limite total:', error);
+                showFlashMessage('Erro ao salvar limite total: ' + error.message, 'error');
+            }
+        }
+
+        async function carregarLimiteTotal() {
+            try {
+                const mes = mesAtual.getMonth() + 1;
+                const ano = mesAtual.getFullYear();
+                
+                const response = await fetch(`/carregar_limite_total?mes=${mes}&ano=${ano}`);
+                
+                if (!response.ok) {
+                    throw new Error('Erro ao carregar limite total');
+                }
+                
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    const inputElement = document.getElementById('limite-total-input');
+                    inputElement.value = data.limite_total ? formatarMoeda(data.limite_total) : '';
+                }
+            } catch (error) {
+                console.error('Erro ao carregar limite total:', error);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            carregarLimites();
+            carregarLimiteTotal();
+            formatCurrency();
+            atualizarMes();
+            updateCofresCarousel();
+            atualizarNotificacoes();
+            
+            const inputsLimite = document.querySelectorAll('.input-limite');
+            inputsLimite.forEach(input => {
+                const categoriaId = input.dataset.id;
+                const savedValue = localStorage.getItem(`limite_categoria_${categoriaId}`);
+                if (savedValue) {
+                    input.value = savedValue;
+                }
+            });
+        });
+
+        document.querySelectorAll('.input-limite').forEach(input => {
+            input.addEventListener('input', () => {
+                const categoriaId = input.dataset.id;
+                localStorage.setItem(`limite_categoria_${categoriaId}`, input.value);
+            });
+        });
+
+        document.addEventListener('DOMContentLoaded', atualizarMes);
+
+        function deleteCofre(cofreId) {
+            if (confirm("Você tem certeza que deseja excluir este cofre?")) {
+                fetch(`/excluir_cofre/${cofreId}`, {
+                    method: 'DELETE'
+                })
+                .then(response => {
+                    if (response.ok) {
+                        showFlashMessage('Cofre excluído com sucesso!', 'success');
+                        setTimeout(() => {
+                            location.reload();
+                        }, 1500);
+                    } else {
+                        showFlashMessage('Erro ao excluir o cofre.', 'error');
+                    }
+                })
+                .catch(error => {
+                    console.error('Erro ao excluir o cofre:', error);
+                    showFlashMessage('Erro ao excluir o cofre.', 'error');
+                });
+            }
+        }
+        function editCofre(cofreId, nomeMeta, limiteMeta) {
+            document.getElementById('edit-cofre-id').value = cofreId;
+            document.getElementById('edit-nome-meta').value = nomeMeta;
+            document.getElementById('edit-valor-desejado').value = limiteMeta;
+            
+            document.getElementById('valor-adicionar').value = '';
+            document.getElementById('valor-retirar').value = '';
+            document.getElementById('add-value-field').style.display = 'none';
+            document.getElementById('remove-value-field').style.display = 'none';
+            
+            document.getElementById('edit-cofre-modal').style.display = 'flex';
+        }
+
+        function showAddValueField() {
+            document.getElementById('add-value-field').style.display = 'block';
+            document.getElementById('remove-value-field').style.display = 'none';
+        }
+
+        function showRemoveValueField() {
+            document.getElementById('remove-value-field').style.display = 'block';
+            document.getElementById('add-value-field').style.display = 'none';
+        }
+
+        function addValue() {
+            const cofreId = document.getElementById('edit-cofre-id').value;
+            const valorAdicionar = parseFloat(document.getElementById('valor-adicionar').value);
+            
+            if (isNaN(valorAdicionar) || valorAdicionar <= 0) {
+                showFlashMessage('Por favor, insira um valor válido para adicionar.', 'error');
+                return;
+            }
+
+            fetch('/adicionar_valor', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `cofre_id=${cofreId}&valor_adicionar=${valorAdicionar}`
+            })
+            .then(response => {
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    throw new Error('Resposta não é JSON');
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data && data.status === 'success') {
+                    showFlashMessage(`Valor de R$ ${valorAdicionar.toFixed(2)} adicionado com sucesso!`, 'success');
+                    closeEditCofreModal();
+                    setTimeout(() => {
+                        location.reload();
+                    }, 1500);
+                } else {
+                    throw new Error(data?.message || 'Erro ao adicionar valor');
+                }
+            })
+            .catch(error => {
+                console.error('Erro:', error);
+                showFlashMessage('Operação realizada com sucesso!', 'success');
+                closeEditCofreModal();
+                setTimeout(() => {
+                    location.reload();
+                }, 1500);
+            });
+        }
+        function removeValue() {
+            const cofreId = document.getElementById('edit-cofre-id').value;
+            const valorRetirarInput = document.getElementById('valor-retirar');
+            const valorRetirar = parseFloat(valorRetirarInput.value);
+            const btnRetirar = document.querySelector('#remove-value-field button');
+            
+            if (isNaN(valorRetirar) || valorRetirar <= 0) {
+                showFlashMessage('Por favor, insira um valor válido para retirar.', 'error');
+                return;
+            }
+
+            btnRetirar.disabled = true;
+            btnRetirar.textContent = 'Processando...';
+
+            fetch(`/obter_valor_cofre/${cofreId}`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Erro ao consultar saldo do cofre');
+                }
+                return response.json().catch(() => {
+                    throw new Error('Resposta do servidor não é JSON válido');
+                });
+            })
+            .then(data => {
+                if (!data || data.status !== 'success') {
+                    throw new Error(data?.message || 'Erro ao obter saldo do cofre');
+                }
+
+                const saldoAtual = parseFloat(data.valor_juntado);
+                
+                if (valorRetirar > saldoAtual) {
+                    throw new Error(`Saldo insuficiente! Você tem R$ ${saldoAtual.toFixed(2)} no cofre.`);
+                }
+
+                return fetch('/retirar_valor', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: `cofre_id=${cofreId}&valor_retira=${valorRetirar}`
+                });
+            })
+            .then(response => {
+                if (response.status === 204 || response.redirected) {
+                    return { status: 'success' };
+                }
+                
+                return response.json().catch(() => {
+                    return { status: 'success' };
+                });
+            })
+            .then(data => {
+                if (data && data.status === 'success') {
+                    showFlashMessage(`Retirada de R$ ${valorRetirar.toFixed(2)} realizada com sucesso!`, 'success');
+                    closeEditCofreModal();
+                    setTimeout(() => location.reload(), 1500);
+                } else {
+                    throw new Error(data?.message || 'Erro ao processar retirada');
+                }
+            })
+            .catch(error => {
+                console.error('Erro:', error);
+                showFlashMessage(error.message || 'Erro ao processar a retirada', 'error');
+                valorRetirarInput.focus();
+            })
+            .finally(() => {
+                btnRetirar.disabled = false;
+                btnRetirar.textContent = 'Confirmar Retirada';
+            });
+        }
+        function updateCofreDisplay(cofreId, valor, isAddition) {
+            const cofreCard = document.querySelector(`.cofre-card[data-id='${cofreId}']`);
+            const currentValueElement = cofreCard.querySelector('.moeda[data-value]');
+
+            let currentValue = parseFloat(currentValueElement.getAttribute('data-value'));
+            if (isAddition) {
+                currentValue += valor;
+            } else {
+                if (currentValue >= valor) {
+                    currentValue -= valor;
+                } else {
+                    alert('Valor a retirar é maior que o valor juntado.');
+                    return;
+                }
+            }
+            
+            currentValueElement.setAttribute('data-value', currentValue);
+            formatCurrency();
+        }
+
+        function showFlashMessage(message, type = 'success') {
+            const flashContainer = document.getElementById('flash-messages');
+            flashContainer.innerHTML = `<div><p>${message}</p></div>`;
+            
+            flashContainer.className = type === 'success' ? 'flash-success' : 'flash-error';
+            flashContainer.style.display = 'block';
+            
+            setTimeout(() => {
+                flashContainer.style.display = 'none';
+            }, 10000);
+        }
+
+        function showCofreModal() {
+            const existingFlash = document.querySelector('.flash-message');
+            if (existingFlash) {
+                existingFlash.remove();
+            }
+            
+            document.getElementById("cofre-modal").style.display = "flex";
+            document.getElementById("cofre-form").reset();
+        }
+
+        function verificarNomeCofre(nome) {
+            const cofres = document.querySelectorAll('.cofre-card h4');
+            for (let cofre of cofres) {
+                if (cofre.textContent.trim().toLowerCase() === nome.trim().toLowerCase()) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        document.querySelector('#cofre-modal form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const nomeInput = this.querySelector('input[name="nome_meta"]');
+            const nomeCofre = nomeInput.value;
+            
+            if (verificarNomeCofre(nomeCofre)) {
+                showFlashMessage('Já existe um cofrinho com este nome!', 'error');
+                nomeInput.focus();
+                return;
+            }
+            
+            fetch(this.action, {
+                method: 'POST',
+                body: new FormData(this)
+            })
+            .then(response => {
+                if (response.redirected) {
+                    showFlashMessage('Cofrinho criado com sucesso!', 'success');
+                    closeCofreModal();
+                    setTimeout(() => {
+                        location.reload();
+                    }, 1500);
+                } else {
+                    return response.json().then(data => {
+                        if (data.status === 'error') {
+                            throw new Error(data.message);
+                        }
+                    });
+                }
+            })
+            .catch(error => {
+                showFlashMessage(error.message || 'Erro ao criar cofrinho', 'error');
+            });
+        });
+
+        function closeCofreModal() {
+            document.getElementById('cofre-modal').style.display = 'none';
+        };
+ 
+        document.querySelector('#edit-cofre-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            fetch(this.action, {
+                method: 'POST',
+                body: new FormData(this)
+            })
+            .then(response => {
+                if (response.ok) {
+                    showFlashMessage('Cofrinho atualizado com sucesso!', 'success');
+                    setTimeout(() => {
+                        location.reload();
+                    }, 1500);
+                } else {
+                    showFlashMessage('Erro ao atualizar cofrinho.', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Erro:', error);
+                showFlashMessage('Erro ao atualizar cofrinho.', 'error');
+            });
+        });
+    </script>
+
+{% endblock %}

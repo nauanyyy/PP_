@@ -1,0 +1,470 @@
+{% extends "base.html" %}
+
+{% block title %}Relatórios{% endblock %}
+
+{% block content %}
+<section class="user-relatorios">
+    <header class="navbar">
+        <div class="logo">
+            <img src="{{ url_for('static', filename='ECONIZZE.png') }}" class="logo-img" alt="Logomarca">
+       </div>
+       <nav class="nav-links">
+           <a href="{{ url_for('usuario') }}" class="dashboard-btn">Visão Geral</a>
+           <a href="{{ url_for('historico') }}" class="dashboard-btn active">Histórico</a>
+           <a href="{{ url_for('relatorios') }}" class="dashboard-btn">Relatórios</a>
+           <a href="{{ url_for('metas') }}" class="dashboard-btn">Metas</a>
+       </nav>
+       <div class="user-actions" style="margin-right: 20px;">
+           <button class="btn-imagem" style="background: none; border: none; padding: 0; cursor: pointer;" onclick="toggleNotificationBar()">
+               <img src="{{ url_for('static', filename='sininho.png') }}" alt="Notificações" style="display: block; width: 25px; height: 25px;">
+           </button>
+           <span style="margin: 0 15px;"></span>
+           <button class="btn-imagem" style="background: none; border: none; padding: 0; cursor: pointer;" onclick="toggleConfiguracoes()">
+               <img src="{{ url_for('static', filename='home.png') }}" alt="Configurações" style="display: block; width: 25px; height: 25px;">
+           </button>
+       </div>
+   </header>
+       
+   <div id="notification-bar" class="notification-bar" style="display: none;">
+       <h4 style="display: flex; justify-content: space-between; align-items: center;">
+           Alertas
+           <span onclick="toggleNotificationBar()" style="cursor: pointer; font-size: 18px; color: #d80048;">
+               &times;
+           </span>
+       </h4>
+       <ul id="notification-list"></ul>
+       <button onclick="clearNotifications()" style="margin-top: 5px; background-color: #d80048; color: white; border: none; border-radius: 5px; padding: 5px 10px;">
+           Limpar Notificações
+       </button>
+   </div>
+
+    <div class="relatorios-container">
+        <header class="header-relatorios">
+            <h2>Relatório Mensal</h2>
+            <div class="navegacao-meses">
+                <button class="seta" onclick="prevMonth()" style="border: none; background: none;">
+                    <img src="{{ url_for('static', filename='setaesquerda.png') }}" alt="Seta Esquerda" class="seta-img">
+                </button>
+                <span id="mes-atual"></span>
+                <button class="seta" onclick="nextMonth()" style="border: none; background: none;">
+                    <img src="{{ url_for('static', filename='setadireita.png') }}" alt="Seta Direita" class="seta-img">
+                </button>
+            </div>
+        </header>
+
+        <div id="despesas-container" class="transacao-container" style="display: flex;">
+            <div class="despesas">
+                <h3 style="padding-bottom: 10px;">Despesas</h3>
+                <div id="lista-despesas"></div>
+                <div class="total" id="total-despesas-container" style="display: none;">
+                    <strong>Total:</strong> <span id="total-despesas" class="valor-despesa">R$ 0,00</span>
+                </div>
+            </div>
+            <img src="{{ url_for('static', filename='porquinhosonolento.png') }}" alt="Porquinho Sonolento" style="width: 150px; height: auto; margin-left: 20px; margin-top: 70px;">
+            <div class="grafico-anel" id="grafico-despesas" style="display: none;"></div>
+        </div>
+
+        <div class="linha-separacao-principal"></div>
+
+        <div id="receitas-container" class="transacao-container" style="display: flex;">
+            <div class="receitas">
+                <h3 style="padding-bottom: 10px;">Receitas</h3>
+                <div id="lista-receitas"></div>
+                <div class="total" id="total-receitas-container" style="display: none;">
+                    <strong>Total:</strong> <span id="total-receitas" class="valor-receita">R$ 0,00</span>
+                </div>
+            </div>
+            <img src="{{ url_for('static', filename='porquinhofeliz.png') }}" alt="Porquinho Feliz" style="width: 150px; height: auto; margin-left: 20px; margin-top: 50px;">
+            <div class="grafico-anel" id="grafico-receitas" style="display: none;"></div>
+        </div>
+
+        <div class="vazio" id="msg-vazio" style="display: none;">
+            <div class="vazio-container">
+                <img src="{{ url_for('static', filename='porquinhoduvida.png') }}" alt="Porquinho" class="porquinho-img">
+                <p>Nenhuma receita ou despesa registrada neste período.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<style>
+    body {
+        font-family: 'Trebuchet MS', 'Lucida Sans Unicode', 'Lucida Grande', 'Lucida Sans', Arial, sans-serif;
+        background-color: #ff6a9c;
+        margin: 0;
+        padding: 0;
+    }
+
+    .user-relatorios {
+        max-width: 800px;
+        min-height: 500px;
+        margin: 20px auto;
+        padding: 30px;
+        background-color: white;
+        margin-top: 150px;
+        border-radius: 15px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    }
+
+    .header-relatorios, .header-periodo {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+    }
+
+    .header-relatorios h2, .header-periodo h2 {
+        color: #e91e63;
+        font-size: 24px;
+        margin: 0;
+    }
+
+    .navegacao-meses {
+        display: flex;
+        align-items: center;
+        font-weight: bold;
+        color: #e91e63;
+    }
+
+    .seta-img {
+        width: 20px;
+        height: auto;
+        margin: 0 10px;
+    }
+
+    .transacoes {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .transacao-container {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 20px;
+        padding: 10px 0;
+    }
+
+    .despesas, .receitas {
+        width: 60%;
+        margin-right: 20px;
+    }
+
+    .despesas h3, .receitas h3 {
+        color: #e91e63;
+        margin-bottom: 10px;
+        font-size: 20px;
+    }
+
+    .transacao {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        width: 100%;
+        margin-bottom: 5px;
+    }
+
+    .transacao img {
+        margin-right: 10px;
+    }
+
+    .valor-despesa {
+        color: red;
+        margin-left: auto;
+    }
+
+    .valor-receita {
+        color: green;
+        margin-left: auto;
+    }
+
+    .total {
+        font-weight: bold;
+        margin-top: 10px;
+        color: #e91e63;
+        font-size: 18px;
+        text-align: right;
+    }
+
+    .linha-separacao {
+        height: 1px;
+        background-color: rgba(255, 105, 180, 0.3);
+        margin: 5px 0;
+    }
+
+    .linha-separacao-principal {
+        height: 3px;
+        background-color: rgba(255, 105, 180, 0.8);
+        margin: 20px 0;
+    }
+
+    .vazio {
+        display: flex;
+        justify-content: center;
+        margin-top: 20px;
+        text-align: center;
+    }
+
+    .vazio-container {
+        display: flex;
+        align-items: center;
+    }
+
+    .porquinho-img {
+        width: 100px;
+        height: auto;
+        margin-right: 10px;
+        margin-left: 100px;
+    }
+
+    .notification-bar {
+        position: absolute;
+        top: 90px;
+        margin-left: 950px;
+        background-color: #ffe0e0;
+        border: 1px solid #f8b3b3;
+        border-radius: 8px;
+        padding: 15px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        display: none;
+        z-index: 1000;
+        width: 300px;
+        font-size: 14px;
+    }
+
+    .notification-bar h4 {
+        color: #d80048;
+        margin: 0 0 10px;
+        font-size: 18px;
+        text-align: center;
+    }
+
+    .notification-bar ul {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+
+    .notification-bar li {
+        background-color: #ffd1d1;
+        border: 1px solid #f0a3a3;
+        border-radius: 5px;
+        padding: 10px;
+        margin-bottom: 5px;
+        transition: background-color 0.3s;
+    }
+
+    .notification-bar li:hover {
+        background-color: #ffb3b3;
+    }
+
+    .notification-bar button {
+        background-color: #d80048;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        padding: 5px 10px;
+        cursor: pointer;
+        font-size: 12px;
+        margin-top: 10px;
+        display: block;
+        width: 100%;
+    }
+
+    .notification-bar button:hover {
+        background-color: #b0002d;
+    }
+</style>
+
+<script>
+    let mesAtual = new Date();
+
+    function atualizarMes() {
+        const mesNome = mesAtual.toLocaleString('pt-BR', { month: 'long' });
+        const ano = mesAtual.getFullYear();
+        document.getElementById('mes-atual').innerText = `${mesNome.charAt(0).toUpperCase() + mesNome.slice(1)} ${ano}`;
+        carregarTransacoes();
+    }
+
+    function prevMonth() {
+        mesAtual.setMonth(mesAtual.getMonth() - 1);
+        atualizarMes();
+    }
+
+    function nextMonth() {
+        mesAtual.setMonth(mesAtual.getMonth() + 1);
+        atualizarMes();
+    }
+
+    function carregarTransacoes() {
+        const mes = mesAtual.getMonth() + 1;
+        const ano = mesAtual.getFullYear();
+
+        fetch(`/transacoes?mes=${mes}&ano=${ano}`)
+            .then(response => response.json())
+            .then(data => {
+                const listaDespesas = document.getElementById('lista-despesas');
+                const listaReceitas = document.getElementById('lista-receitas');
+                const totalDespesas = document.getElementById('total-despesas');
+                const totalReceitas = document.getElementById('total-receitas');
+                const msgVazio = document.getElementById('msg-vazio');
+                const totalDespesasContainer = document.getElementById('total-despesas-container');
+                const totalReceitasContainer = document.getElementById('total-receitas-container');
+                const graficoDespesas = document.getElementById('grafico-despesas');
+                const graficoReceitas = document.getElementById('grafico-receitas');
+
+                listaDespesas.innerHTML = '';
+                listaReceitas.innerHTML = '';
+                totalDespesas.innerText = 'R$ 0,00';
+                totalReceitas.innerText = 'R$ 0,00';
+                totalDespesasContainer.style.display = 'none';
+                totalReceitasContainer.style.display = 'none';
+                graficoDespesas.style.display = 'none';
+                graficoReceitas.style.display = 'none';
+
+                let totalDespesa = 0;
+                let totalReceita = 0;
+
+                const idsDespesas = new Set();
+                const idsReceitas = new Set();
+
+                data.despesas.sort((a, b) => parseFloat(a.valor) - parseFloat(b.valor));
+                data.despesas.forEach(d => {
+                    if (!idsDespesas.has(d.id)) {
+                        idsDespesas.add(d.id);
+                        listaDespesas.innerHTML += `
+                            <div class="transacao">
+                                <img src="/static/${d.categoria_imagem}" style="width: 30px; height: 30px;">
+                                <span class="descricao">${d.descricao}</span>
+                                <span class="valor despesa valor-despesa">${formatarMoeda(parseFloat(d.valor))}</span>
+                            </div>
+                            <div class="linha-separacao"></div>
+                        `;
+                        totalDespesa += parseFloat(d.valor);
+                    }
+                });
+
+                data.receitas.sort((a, b) => parseFloat(a.valor) - parseFloat(b.valor));
+                data.receitas.forEach(r => {
+                    if (!idsReceitas.has(r.id)) {
+                        idsReceitas.add(r.id);
+                        listaReceitas.innerHTML += `
+                            <div class="transacao">
+                                <img src="/static/${r.categoria_imagem}" style="width: 30px; height: 30px;">
+                                <span class="descricao">${r.descricao}</span>
+                                <span class="valor receita valor-receita">${formatarMoeda(parseFloat(r.valor))}</span>
+                            </div>
+                            <div class="linha-separacao"></div>
+                        `;
+                        totalReceita += parseFloat(r.valor);
+                    }
+                });
+
+                totalDespesas.innerText = formatarMoeda(totalDespesa);
+                totalReceitas.innerText = formatarMoeda(totalReceita);
+
+                const linhaSeparacao = document.querySelector('.linha-separacao-principal');
+                if (totalDespesa > 0 && totalReceita > 0) {
+                    linhaSeparacao.style.display = 'block';
+                } else {
+                    linhaSeparacao.style.display = 'none';
+                }
+
+                const despesasContainer = document.getElementById('despesas-container');
+                const receitasContainer = document.getElementById('receitas-container');
+
+                if (totalDespesa > 0) {
+                    despesasContainer.style.display = 'flex';
+                    totalDespesasContainer.style.display = 'block';
+                    graficoDespesas.style.display = 'block';
+                } else {
+                    despesasContainer.style.display = 'none';
+                }
+
+                if (totalReceita > 0) {
+                    receitasContainer.style.display = 'flex';
+                    totalReceitasContainer.style.display = 'block';
+                    graficoReceitas.style.display = 'block';
+                } else {
+                    receitasContainer.style.display = 'none';
+                }
+
+                if (data.despesas.length === 0 && data.receitas.length === 0) {
+                    msgVazio.style.display = 'block';
+                    despesasContainer.style.display = 'none';
+                    receitasContainer.style.display = 'none';
+                } else {
+                    msgVazio.style.display = 'none';
+                }
+            });
+    }
+
+    function formatarMoeda(valor) {
+        return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        atualizarMes();
+    });
+
+    function toggleConfiguracoes() {
+        window.location.href = "{{ url_for('configuracoes') }}";
+    }
+
+    function toggleNotificationBar() {
+            const notificationBar = document.getElementById("notification-bar");
+            notificationBar.style.display = notificationBar.style.display === "none" ? "block" : "none";
+            if (notificationBar.style.display === "block") {
+                fetchNotifications();
+            }
+        }
+
+        function fetchNotifications() {
+            fetch('/notificacoes')
+                .then(response => response.json())
+                .then(data => {
+                    const notificationList = document.getElementById('notification-list');
+                    notificationList.innerHTML = '';
+
+                    if (data.despesas && data.despesas.length > 0) {
+                        data.despesas.forEach(despesa => {
+                            const li = document.createElement('li');
+                            li.innerText = `A despesa "${despesa.descricao}" vence em ${new Date(despesa.prazo).toLocaleDateString()}.`;
+                            notificationList.appendChild(li);
+                        });
+                    }
+
+                    if (data.metas_atingidas && data.metas_atingidas.length > 0) {
+                        data.metas_atingidas.forEach(meta => {
+                            const li = document.createElement('li');
+                            li.className = 'meta-atingida';
+                            li.innerText = `Parabéns! Você atingiu a meta do cofrinho "${meta.nome}"!`;
+                            notificationList.appendChild(li);
+                        });
+                    }
+
+                    if (notificationList.children.length === 0) {
+                        notificationList.innerHTML = '<li>Nenhuma notificação no momento.</li>';
+                    }
+                })
+                .catch(error => console.error('Erro ao buscar notificações:', error));
+        }
+
+        function clearNotifications() {
+            fetch('/limpar_notificacoes', {
+                method: 'POST'
+            })
+            .then(response => {
+                if (response.ok) {
+                    const notificationList = document.getElementById('notification-list');
+                    notificationList.innerHTML = '<li>Nenhuma notificação no momento.</li>';
+                } else {
+                    alert("Erro ao limpar notificações.");
+                }
+            })
+            .catch(error => console.error('Erro ao limpar notificações:', error));
+        }
+
+</script>
+
+{% endblock %}
