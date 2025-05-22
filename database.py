@@ -35,8 +35,8 @@ def criar_tabelas():
             descricao VARCHAR(255) NOT NULL,
             valor DECIMAL(10, 2) NOT NULL,
             data DATE NOT NULL,
-            categoria VARCHAR(100) NOT NULL,  # Adicionado
-            categoria_id INT,                # Opcional, se quiser manter a FK
+            categoria VARCHAR(100) NOT NULL, 
+            categoria_id INT,               
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE,
             FOREIGN KEY (categoria_id) REFERENCES categorias(id)
@@ -51,8 +51,8 @@ def criar_tabelas():
             valor DECIMAL(10, 2) NOT NULL,
             data DATE NOT NULL,
             prazo DATE NOT NULL,
-            categoria VARCHAR(100) NOT NULL,  # Adicionado
-            categoria_id INT,                 # Opcional
+            categoria VARCHAR(100) NOT NULL, 
+            categoria_id INT,              
             status ENUM('pendente', 'pago', 'atrasado') DEFAULT 'pendente',
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE,
